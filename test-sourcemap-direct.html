@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Quick Source Map Test</title>
+</head>
+<body>
+  <h1>Quick Source Map Test</h1>
+  <button onclick="test()">Trigger Error</button>
+  <button onclick="check()">Check Server</button>
+  <pre id="log"></pre>
+
+  <!-- Load the minified code with source map -->
+  <script src="test-sourcemap/bundle.min.js"></script>
+
+  <script>
+    const log = document.getElementById('log');
+
+    // Simple monitor that just sends to server
+    function sendToServer(data) {
+      fetch('http://localhost:3001/collect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      }).then(() => log.textContent += '✓ Sent\n');
+    }
+
+    function test() {
+      log.textContent = 'Triggering error...\n';
+      try {
+        // This will throw an error from the minified code
+        const calc = new Calculator();
+        calc.divide(10, 0);
+      } catch (error) {
+        log.textContent += 'Error: ' + error.message + '\n';
+        log.textContent += 'Stack:\n' + error.stack + '\n\n';
+
+        // Send to server with full details
+        sendToServer({
+          appId: 'sourcemap-test',
+          type: 'custom',
+          level: 'error',
+          message: error.message,
+          stack: error.stack,
+          context: {
+            url: window.location.href,
+            userAgent: navigator.userAgent
+          },
+          timestamp: Date.now()
+        });
+      }
+    }
+
+    async function check() {
+      log.textContent += '\nFetching errors...\n';
+      const res = await fetch('http://localhost:3001/errors');
+      const data = await res.json();
+      log.textContent += `Total: ${data.total}\n\n`;
+
+      if (data.total > 0) {
+        const err = data.errors[data.errors.length - 1];
+        log.textContent += 'Latest error:\n';
+        log.textContent += `Message: ${err.message}\n`;
+        log.textContent += `Stack:\n${err.stack}\n\n`;
+
+        if (err.sourceMapParsed) {
+          log.textContent += '✅ Source Map PARSED!\n';
+          log.textContent += `Original File: ${err.stackFrames[0].originalFilename}\n`;
+          log.textContent += `Original Line: ${err.stackFrames[0].originalLine}\n`;
+          log.textContent += `Original Column: ${err.stackFrames[0].originalColumn}\n`;
+          log.textContent += `Function: ${err.stackFrames[0].functionName}\n`;
+        } else {
+          log.textContent += '❌ Source Map NOT parsed\n';
+        }
+
+        log.textContent += '\nFull error:\n' + JSON.stringify(err, null, 2);
+      }
+    }
+  </script>
+</body>
+</html>

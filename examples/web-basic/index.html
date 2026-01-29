@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Error Monitor SDK - 示例</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 16px;
+      padding: 40px;
+      max-width: 600px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .section {
+      margin-bottom: 30px;
+    }
+
+    .section-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #444;
+      margin-bottom: 12px;
+    }
+
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-right: 10px;
+      margin-bottom: 10px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    button.secondary {
+      background: #f0f0f0;
+      color: #333;
+    }
+
+    button.secondary:hover {
+      background: #e0e0e0;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 14px;
+      margin-bottom: 10px;
+    }
+
+    .status {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 20px;
+    }
+
+    .status-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #e9ecef;
+    }
+
+    .status-item:last-child {
+      border-bottom: none;
+    }
+
+    .status-label {
+      color: #666;
+      font-size: 14px;
+    }
+
+    .status-value {
+      color: #333;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .code {
+      background: #f4f4f4;
+      padding: 12px;
+      border-radius: 6px;
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-size: 12px;
+      color: #333;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🚀 Error Monitor SDK</h1>
+    <p class="subtitle">前端错误监控SDK - 使用示例</p>
+
+    <div class="section">
+      <div class="section-title">错误测试</div>
+      <button onclick="triggerJsError()">触发JS错误</button>
+      <button onclick="triggerPromiseError()">触发Promise错误</button>
+      <button onclick="triggerNetworkError()">触发网络错误</button>
+      <button class="secondary" onclick="customLog()">自定义日志</button>
+    </div>
+
+    <div class="section">
+      <div class="section-title">用户行为追踪</div>
+      <input type="text" id="testInput" placeholder="输入内容测试行为追踪...">
+      <button onclick="navigate()">模拟路由跳转</button>
+      <button onclick="fetchData()">发起HTTP请求</button>
+    </div>
+
+    <div class="section">
+      <div class="section-title">用户信息</div>
+      <button onclick="setUser()">设置用户信息</button>
+      <button class="secondary" onclick="clearUser()">清除用户信息</button>
+    </div>
+
+    <div class="status">
+      <div class="status-item">
+        <span class="status-label">SDK状态</span>
+        <span class="status-value" id="sdkStatus">已初始化</span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">会话ID</span>
+        <span class="status-value" id="sessionId">-</span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">错误数量</span>
+        <span class="status-value" id="errorCount">0</span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">面包屑数量</span>
+        <span class="status-value" id="breadcrumbCount">0</span>
+      </div>
+    </div>
+
+    <div class="section" style="margin-top: 20px;">
+      <div class="section-title">控制台</div>
+      <div class="code" id="console">
+        等待事件...
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import ErrorMonitorWeb from '../../packages/web/src/index.ts'
+
+    // 创建监控实例
+    const monitor = new ErrorMonitorWeb({
+      appId: 'demo-app',
+      dsn: 'https://your-server.com/collect', // 替换为真实的服务端地址
+      environment: 'development',
+      release: '1.0.0',
+      sampleRate: 1.0,
+      errorSampleRate: 1.0
+    })
+
+    // 初始化
+    monitor.init()
+
+    // 全局函数
+    let errorCount = 0
+
+    window.triggerJsError = function() {
+      try {
+        throw new Error('这是一个测试错误！')
+      } catch (error) {
+        monitor.captureError(error)
+        logToConsole('已捕获JS错误')
+        errorCount++
+        updateStats()
+      }
+    }
+
+    window.triggerPromiseError = function() {
+      Promise.reject('这是一个Promise rejection错误')
+      logToConsole('已触发Promise错误')
+      errorCount++
+      updateStats()
+    }
+
+    window.triggerNetworkError = function() {
+      fetch('https://invalid-url-that-will-fail.com')
+        .catch(() => {
+          logToConsole('已触发网络错误')
+          errorCount++
+          updateStats()
+        })
+    }
+
+    window.customLog = function() {
+      monitor.captureMessage('这是自定义日志消息', 'info')
+      logToConsole('已发送自定义日志')
+    }
+
+    window.navigate = function() {
+      history.pushState({}, '', '/page/' + Date.now())
+      logToConsole('已模拟路由跳转')
+    }
+
+    window.fetchData = function() {
+      fetch('https://api.github.com/users/github')
+        .then(res => res.json())
+        .then(data => {
+          logToConsole('HTTP请求成功: ' + data.login)
+        })
+    }
+
+    window.setUser = function() {
+      monitor.setUser({
+        id: 'user-123',
+        username: 'demo-user',
+        email: 'user@example.com'
+      })
+      logToConsole('已设置用户信息')
+    }
+
+    window.clearUser = function() {
+      monitor.setUser({})
+      logToConsole('已清除用户信息')
+    }
+
+    function logToConsole(message) {
+      const consoleEl = document.getElementById('console')
+      const time = new Date().toLocaleTimeString()
+      consoleEl.textContent = `[${time}] ${message}\n` + consoleEl.textContent
+    }
+
+    function updateStats() {
+      document.getElementById('errorCount').textContent = errorCount
+      document.getElementById('breadcrumbCount').textContent = '0' // 实际应该从SDK获取
+    }
+
+    // 初始化显示
+    document.getElementById('sessionId').textContent = monitor.generateId().substring(0, 20) + '...'
+    logToConsole('SDK初始化完成')
+  </script>
+</body>
+</html>

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>SDK Simple Test</title>
+</head>
+<body>
+  <h1>SDK Simple Test</h1>
+  <button onclick="testManualError()">Test Manual Error</button>
+  <button onclick="checkServer()">Check Server</button>
+  <button onclick="clearServer()">Clear Server</button>
+  <pre id="result"></pre>
+
+  <script src="http://localhost:3001/server/dist/error-monitor-web.umd.js"></script>
+  <script>
+    const result = document.getElementById('result');
+
+    function log(msg) {
+      result.textContent += msg + '\n';
+      console.log(msg);
+    }
+
+    // 初始化 SDK
+    log('Initializing SDK...');
+    const monitor = new ErrorMonitorWeb.default({
+      appId: 'simple-test',
+      dsn: 'http://localhost:3001/collect',
+      debug: true,
+      autoCapture: {
+        js: true,
+        promise: true,
+        network: false,
+        resource: false
+      }
+    });
+
+    monitor.init();
+    log('SDK initialized');
+    log('');
+
+    // 测试手动错误上报
+    function testManualError() {
+      log('Sending manual error...');
+      monitor.captureError(new Error('Test error from simple page'));
+      log('Error sent!');
+      log('');
+    }
+
+    // 检查服务器
+    async function checkServer() {
+      log('Checking server...');
+      try {
+        const response = await fetch('http://localhost:3001/errors');
+        const data = await response.json();
+        log('Server has ' + data.total + ' errors');
+        if (data.errors.length > 0) {
+          log('Latest error: ' + JSON.stringify(data.errors[data.errors.length - 1], null, 2));
+        }
+      } catch (e) {
+        log('Error: ' + e.message);
+      }
+      log('');
+    }
+
+    // 清空服务器
+    async function clearServer() {
+      log('Clearing server...');
+      try {
+        await fetch('http://localhost:3001/errors/clear', { method: 'POST' });
+        log('Server cleared');
+      } catch (e) {
+        log('Error: ' + e.message);
+      }
+      log('');
+    }
+
+    // 自动检查一次
+    setTimeout(checkServer, 500);
+  </script>
+</body>
+</html>

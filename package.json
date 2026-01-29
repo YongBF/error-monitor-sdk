@@ -1,0 +1,36 @@
+{
+  "name": "error-monitor-sdk",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A comprehensive frontend error monitoring SDK",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
+    "changeset": "changeset",
+    "version": "changeset version",
+    "release": "changeset publish",
+    "clean": "turbo run clean && rm -rf node_modules"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.27.1",
+    "@typescript-eslint/eslint-plugin": "^7.1.0",
+    "@typescript-eslint/parser": "^7.1.0",
+    "eslint": "^8.57.0",
+    "prettier": "^3.2.5",
+    "turbo": "^1.12.4",
+    "typescript": "^5.3.3",
+    "vite": "^5.1.6",
+    "vite-plugin-dts": "^3.7.3",
+    "vitest": "^1.4.0"
+  },
+  "packageManager": "pnpm@7.1.9",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

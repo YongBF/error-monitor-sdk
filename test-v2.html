@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Error Monitor SDK - 完整功能测试</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      padding: 40px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 32px;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .section {
+      margin-bottom: 30px;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 12px;
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #444;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section-title .icon {
+      font-size: 24px;
+    }
+
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      margin: 5px;
+      transition: transform 0.2s;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    button.secondary {
+      background: #e0e0e0;
+      color: #333;
+    }
+
+    input, select {
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 14px;
+      margin: 5px;
+      min-width: 200px;
+    }
+
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .status-card {
+      background: white;
+      padding: 15px;
+      border-radius: 10px;
+      border-left: 4px solid #667eea;
+    }
+
+    .status-label {
+      color: #666;
+      font-size: 12px;
+      margin-bottom: 5px;
+    }
+
+    .status-value {
+      color: #333;
+      font-weight: 600;
+      font-size: 16px;
+    }
+
+    .console {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 20px;
+      border-radius: 10px;
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-size: 13px;
+      max-height: 400px;
+      overflow-y: auto;
+      margin-top: 20px;
+    }
+
+    .console-line {
+      margin: 5px 0;
+      padding: 3px 0;
+      border-bottom: 1px solid #333;
+    }
+
+    .console-line.success {
+      color: #4ec9b0;
+    }
+
+    .console-line.error {
+      color: #f48771;
+    }
+
+    .console-line.info {
+      color: #9cdcfe;
+    }
+
+    .console-line .time {
+      color: #808080;
+      margin-right: 10px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      margin-left: 10px;
+    }
+
+    .badge.success {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .badge.error {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    .badge.info {
+      background: #d1ecf1;
+      color: #0c5460;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🚀 Error Monitor SDK - 完整功能测试</h1>
+    <p class="subtitle">测试所有核心功能和插件</p>
+
+    <div class="section">
+      <div class="section-title">
+        <span class="icon">📦</span>
+        <span>SDK状态</span>
+      </div>
+      <div class="status-grid">
+        <div class="status-card">
+          <div class="status-label">SDK状态</div>
+          <div class="status-value" id="sdkStatus">未初始化</div>
+        </div>
+        <div class="status-card">
+          <div class="status-label">会话ID</div>
+          <div class="status-value" id="sessionId">-</div>
+        </div>
+        <div class="status-card">
+          <div class="status-label">已捕获错误</div>
+          <div class="status-value" id="errorCount">0</div>
+        </div>
+        <div class="status-card">
+          <div class="status-label">面包屑数量</div>
+          <div class="status-value" id="breadcrumbCount">0</div>
+        </div>
+        <div class="status-card">
+          <div class="status-label">当前用户</div>
+          <div class="status-value" id="currentUser">未设置</div>
+        </div>
+        <div class="status-card">
+          <div class="status-label">环境</div>
+          <div class="status-value" id="environment">-</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">
+        <span class="icon">🔴</span>
+        <span>错误捕获测试</span>
+      </div>
+      <button onclick="testJSError()">JavaScript错误</button>
+      <button onclick="testPromiseError()">Promise Rejection</button>
+      <button onclick="testNetworkError()">网络错误</button>
+      <button onclick="testResourceError()">资源加载错误</button>
+      <button onclick="testCustomMessage()" class="secondary">自定义消息</button>
+      <button onclick="testUnhandledError()" class="secondary">未处理错误</button>
+    </div>
+
+    <div class="section">
+      <div class="section-title">
+        <span class="icon">⚡</span>
+        <span>性能监控测试</span>
+      </div>
+      <button onclick="triggerSlowResource()">模拟慢资源</button>
+      <button onclick="showWebVitals()">查看Web Vitals</button>
+      <button onclick="checkPerformance()">性能检查</button>
+    </div>
+
+    <div class="section">
+      <div class="section-title">
+        <span class="icon">👣</span>
+        <span>用户行为测试</span>
+      </div>
+      <div>
+        <input type="text" id="testInput" placeholder="在此输入测试行为追踪...">
+        <button onclick="simulateClick()">模拟点击</button>
+        <button onclick="simulateNavigation()">模拟路由</button>
+        <button onclick="simulateHttp()">模拟HTTP请求</button>
+        <button onclick="addCustomBreadcrumb()" class="secondary">自定义面包屑</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">
+        <span class="icon">👤</span>
+        <span>用户管理</span>
+      </div>
+      <button onclick="setUser1()">用户1</button>
+      <button onclick="setUser2()">用户2</button>
+      <button onclick="clearUser()" class="secondary">清除用户</button>
+    </div>
+
+    <div class="section">
+      <div class="section-title">
+        <span class="icon">⚙️</span>
+        <span>SDK控制</span>
+      </div>
+      <button onclick="reinitSDK()">重新初始化</button>
+      <button onclick="destroySDK()" class="secondary">销毁SDK</button>
+      <button onclick="clearConsole()" class="secondary">清空控制台</button>
+    </div>
+
+    <div class="section">
+      <div class="section-title">
+        <span class="icon">📊</span>
+        <span>事件日志</span>
+      </div>
+      <div class="console" id="console"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    // 模拟拦截网络请求来捕获上报数据
+    let capturedReports = []
+    let errorCount = 0
+
+    // 拦截fetch来捕获SDK上报的数据
+    const originalFetch = window.fetch
+    window.fetch = function (...args) {
+      const url = typeof args[0] === 'string' ? args[0] : String(args[0])
+
+      // 捕获发送到SDK服务器的请求
+      if (url.includes('your-server.com') || url.includes('collect')) {
+        return originalFetch.apply(this, args).then(response => {
+          // 克隆响应以避免消费原始响应
+          return response.clone().json().then(data => {
+            if (Array.isArray(data)) {
+              capturedReports.push(...data)
+            } else {
+              capturedReports.push(data)
+            }
+            return response
+          }).catch(() => response)
+        })
+      }
+
+      return originalFetch.apply(this, args)
+    }
+
+    // 导入SDK（使用构建后的文件）
+    import ErrorMonitorWeb from './packages/web/dist/index.mjs'
+
+    let monitor = null
+
+    // 初始化SDK
+    function initSDK() {
+      monitor = new ErrorMonitorWeb({
+        appId: 'test-app',
+        dsn: 'https://your-server.com/collect',
+        environment: 'testing',
+        release: '1.0.0-test',
+        sampleRate: 1.0,
+        errorSampleRate: 1.0
+      })
+
+      // 添加插件需要导入，这里暂时跳过
+      monitor.init()
+
+      updateStatus()
+      log('SDK初始化成功', 'success')
+      log(`应用ID: test-app`, 'info')
+      log(`环境: testing`, 'info')
+    }
+
+    // 更新状态显示
+    function updateStatus() {
+      document.getElementById('sdkStatus').textContent = '已初始化'
+      document.getElementById('sessionId').textContent = monitor.generateId().substring(0, 16) + '...'
+      document.getElementById('errorCount').textContent = errorCount
+      document.getElementById('environment').textContent = 'testing'
+    }
+
+    // 日志函数
+    function log(message, type = 'info') {
+      const consoleEl = document.getElementById('console')
+      const time = new Date().toLocaleTimeString()
+      const line = document.createElement('div')
+      line.className = `console-line ${type}`
+      line.innerHTML = `<span class="time">[${time}]</span>${message}`
+      consoleEl.insertBefore(line, consoleEl.firstChild)
+
+      // 限制日志条数
+      while (consoleEl.children.length > 50) {
+        consoleEl.removeChild(consoleEl.lastChild)
+      }
+    }
+
+    // 所有全局函数定义
+    window.testJSError = function() {
+      try {
+        throw new Error('测试JS错误：这是一个故意的运行时错误！')
+      } catch (error) {
+        monitor.captureError(error)
+        errorCount++
+        log('✓ 已捕获JavaScript错误', 'success')
+        document.getElementById('errorCount').textContent = errorCount
+      }
+    }
+
+    window.testPromiseError = function() {
+      Promise.reject('测试Promise错误：未处理的rejection')
+      log('✓ 已触发Promise rejection', 'success')
+      setTimeout(() => {
+        errorCount++
+        document.getElementById('errorCount').textContent = errorCount
+      }, 100)
+    }
+
+    window.testNetworkError = function() {
+      fetch('https://invalid-domain-12345.com')
+        .catch(() => {
+          log('✓ 已触发网络错误', 'success')
+          setTimeout(() => {
+            errorCount++
+            document.getElementById('errorCount').textContent = errorCount
+          }, 100)
+        })
+    }
+
+    window.testResourceError = function() {
+      const img = new Image()
+      img.src = 'https://invalid-domain-12345.com/image.png'
+      log('✓ 已触发资源加载错误', 'success')
+      setTimeout(() => {
+        errorCount++
+        document.getElementById('errorCount').textContent = errorCount
+      }, 100)
+    }
+
+    window.testCustomMessage = function() {
+      monitor.captureMessage('这是一条自定义消息', 'info')
+      log('✓ 已发送自定义消息', 'success')
+    }
+
+    window.testUnhandledError = function() {
+      try {
+        const obj = null
+        obj.someMethod()
+      } catch (error) {
+        monitor.captureError(error)
+        log('✓ 已捕获未处理错误: ' + error.message, 'success')
+        errorCount++
+        document.getElementById('errorCount').textContent = errorCount
+      }
+    }
+
+    window.triggerSlowResource = function() {
+      log('⏳ 模拟加载慢资源...', 'info')
+      setTimeout(() => {
+        log('✓ 资源加载完成（2秒）', 'success')
+      }, 2000)
+    }
+
+    window.showWebVitals = function() {
+      const entries = performance.getEntriesByType('navigation')
+      if (entries.length > 0) {
+        const lcp = Math.round(entries[0].loadEventEnd - entries[0].startTime)
+        log('📊 页面加载时间: ' + lcp + 'ms', 'info')
+      } else {
+        log('📊 Web Vitals: N/A', 'info')
+      }
+    }
+
+    window.checkPerformance = function() {
+      const perfData = performance.getEntriesByType('navigation')[0]
+      if (perfData) {
+        log('📊 性能指标:', 'info')
+        log(`  - DOM加载: ${Math.round(perfData.domContentLoadedEventEnd - perfData.navigationStart)}ms`, 'info')
+        log(`  - 完全加载: ${Math.round(perfData.loadEventEnd - perfData.navigationStart)}ms`, 'info')
+      }
+    }
+
+    window.simulateClick = function() {
+      log('🖱️ 点击事件测试', 'info')
+    }
+
+    window.simulateNavigation = function() {
+      const newPath = '/test/' + Date.now()
+      history.pushState({}, '', newPath)
+      log(`🔀 路由变化: ${newPath}`, 'info')
+    }
+
+    window.simulateHttp = function() {
+      log('🌐 发起HTTP请求...', 'info')
+      fetch('https://api.github.com/users/github')
+        .then(res => res.json())
+        .then(data => {
+          log(`✓ HTTP成功: ${data.login}`, 'success')
+        })
+        .catch(err => {
+          log(`✗ HTTP失败: ${err.message}`, 'error')
+        })
+    }
+
+    window.addCustomBreadcrumb = function() {
+      monitor.addBreadcrumb({
+        timestamp: Date.now(),
+        type: 'custom',
+        message: '自定义事件',
+        data: { action: 'test', value: Math.random() }
+      })
+      log('✓ 已添加自定义面包屑', 'success')
+    }
+
+    window.setUser1 = function() {
+      monitor.setUser({
+        id: 'user-1',
+        username: '测试用户1',
+        email: 'user1@test.com'
+      })
+      document.getElementById('currentUser').textContent = 'user-1'
+      log('✓ 已设置用户: user-1', 'success')
+    }
+
+    window.setUser2 = function() {
+      monitor.setUser({
+        id: 'user-2',
+        username: '测试用户2',
+        email: 'user2@test.com'
+      })
+      document.getElementById('currentUser').textContent = 'user-2'
+      log('✓ 已设置用户: user-2', 'success')
+    }
+
+    window.clearUser = function() {
+      monitor.setUser({})
+      document.getElementById('currentUser').textContent = '未设置'
+      log('✓ 已清除用户信息', 'success')
+    }
+
+    window.reinitSDK = function() {
+      if (monitor) {
+        monitor.destroy()
+      }
+      errorCount = 0
+      initSDK()
+      log('✓ SDK已重新初始化', 'success')
+    }
+
+    window.destroySDK = function() {
+      monitor.destroy()
+      document.getElementById('sdkStatus').textContent = '已销毁'
+      log('✓ SDK已销毁', 'success')
+    }
+
+    window.clearConsole = function() {
+      document.getElementById('console').innerHTML = ''
+      log('控制台已清空', 'info')
+    }
+
+    // 页面加载完成后初始化
+    window.addEventListener('load', () => {
+      initSDK()
+      log('🚀 测试页面加载完成', 'success')
+    })
+  </script>
+</body>
+</html>

@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Source Map 还原测试</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .header {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      text-align: center;
+    }
+
+    .header h1 {
+      color: #667eea;
+      margin-bottom: 10px;
+    }
+
+    .header p {
+      color: #666;
+      font-size: 14px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .card {
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .card h2 {
+      color: #667eea;
+      margin-bottom: 15px;
+      font-size: 18px;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      background: #667eea;
+      color: white;
+      margin-bottom: 10px;
+      transition: all 0.2s;
+    }
+
+    button:hover {
+      background: #5568d3;
+      transform: translateY(-1px);
+    }
+
+    button.danger {
+      background: #ef4444;
+    }
+
+    button.danger:hover {
+      background: #dc2626;
+    }
+
+    button.success {
+      background: #10b981;
+    }
+
+    button.success:hover {
+      background: #059669;
+    }
+
+    .result {
+      background: #1f2937;
+      color: #10b981;
+      padding: 15px;
+      border-radius: 8px;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 12px;
+      line-height: 1.6;
+      max-height: 400px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      margin-top: 15px;
+    }
+
+    .info-box {
+      background: #dbeafe;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      border-left: 4px solid #3b82f6;
+    }
+
+    .info-box h3 {
+      color: #1d4ed8;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .info-box p {
+      color: #1e40af;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .comparison {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      margin-top: 15px;
+    }
+
+    .code-block {
+      background: #1f2937;
+      color: #f87171;
+      padding: 15px;
+      border-radius: 8px;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 11px;
+      line-height: 1.5;
+      overflow-x: auto;
+    }
+
+    .code-block.success {
+      color: #10b981;
+    }
+
+    .code-block-title {
+      font-weight: bold;
+      margin-bottom: 10px;
+      color: #9ca3af;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🗺️ Source Map 还原测试</h1>
+      <p>测试错误监控 SDK 的 Source Map 堆栈还原功能</p>
+    </div>
+
+    <div class="info-box">
+      <h3>📚 测试说明</h3>
+      <p>
+        1. 点击"触发错误"会在压缩的代码中产生一个错误<br>
+        2. 错误会被上报到服务器，服务器会使用 Source Map 还原原始位置<br>
+        3. 对比压缩代码位置和原始源代码位置的区别
+      </p>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h2>🧪 测试操作</h2>
+        <button class="danger" onclick="triggerError()">触发除零错误</button>
+        <button onclick="triggerUnknownOp()">触发未知操作错误</button>
+        <button onclick="testNormalCalc()">测试正常计算</button>
+        <button class="success" onclick="fetchErrors()">查看服务器错误</button>
+        <button onclick="clearErrors()">清空错误</button>
+      </div>
+
+      <div class="card">
+        <h2>📊 测试结果</h2>
+        <div id="result" class="result">等待操作...</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>📝 位置对比</h2>
+      <div id="comparison" class="comparison">
+        <div class="code-block">
+          <div class="code-block-title">🔴 压缩代码位置（难以理解）</div>
+          <div id="minified">暂无数据</div>
+        </div>
+        <div class="code-block success">
+          <div class="code-block-title">✅ 原始源代码位置（清晰可读）</div>
+          <div id="original">暂无数据</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 加载压缩的测试代码（带 Source Map） -->
+  <script src="test-sourcemap/bundle.min.js"></script>
+
+  <!-- 加载 SDK -->
+  <script src="server/dist/error-monitor-web.umd.js"></script>
+  <script>
+    const resultDiv = document.getElementById('result');
+    const minifiedDiv = document.getElementById('minified');
+    const originalDiv = document.getElementById('original');
+
+    function log(msg) {
+      const time = new Date().toLocaleTimeString();
+      resultDiv.textContent = `[${time}] ${msg}\n` + resultDiv.textContent;
+    }
+
+    // 初始化 SDK
+    log('初始化 Error Monitor SDK...');
+    const monitor = new ErrorMonitorWeb.default({
+      appId: 'sourcemap-test',
+      dsn: 'http://localhost:3001/collect',
+      debug: true,
+      autoCapture: {
+        js: true,
+        promise: false,
+        network: false,
+        resource: false
+      }
+    });
+
+    monitor.init();
+    log('✅ SDK 初始化成功\n');
+
+    // 触发除零错误（在压缩代码的第 28 行）
+    function triggerError() {
+      log('🔴 触发除零错误...');
+      try {
+        testCalculate(); // 调用压缩代码中的函数
+      } catch (error) {
+        log(`❌ 错误: ${error.message}`);
+        log(`📍 堆栈: ${error.stack}\n`);
+        // 手动上报
+        monitor.captureError(error);
+      }
+    }
+
+    // 触发未知操作错误
+    function triggerUnknownOp() {
+      log('🔴 触发未知操作错误...');
+      try {
+        const calc = new Calculator();
+        calc.calculate('unknown', 1, 2);
+      } catch (error) {
+        log(`❌ 错误: ${error.message}`);
+        log(`📍 堆栈: ${error.stack}\n`);
+        monitor.captureError(error);
+      }
+    }
+
+    // 测试正常计算
+    function testNormalCalc() {
+      log('✅ 测试正常计算...');
+      const calc = new Calculator();
+      const result = calc.calculate('add', 5, 3);
+      log(`✅ 5 + 3 = ${result}\n`);
+    }
+
+    // 获取服务器错误
+    async function fetchErrors() {
+      log('📥 获取服务器错误...');
+      try {
+        const response = await fetch('http://localhost:3001/errors');
+        const data = await response.json();
+
+        log(`✅ 共 ${data.total} 条错误\n`);
+
+        if (data.total > 0) {
+          const latestError = data.errors[data.errors.length - 1];
+
+          // 显示压缩代码位置
+          if (latestError.stack) {
+            minifiedDiv.textContent = latestError.stack.split('\n').slice(0, 3).join('\n');
+          }
+
+          // 显示还原后的原始位置
+          if (latestError.sourceMapParsed && latestError.stackFrames) {
+            const frame = latestError.stackFrames[0];
+            originalDiv.innerHTML = `
+              <strong>文件:</strong> ${frame.originalFilename}<br>
+              <strong>行号:</strong> ${frame.originalLine}<br>
+              <strong>列号:</strong> ${frame.originalColumn}<br>
+              <strong>函数:</strong> ${frame.functionName}<br><br>
+              ${latestError.originalStack?.split('\n').slice(0, 3).join('\n')}
+            `;
+
+            log('✅ Source Map 还原成功！');
+            log(`📍 原始位置: ${frame.originalFilename}:${frame.originalLine}:${frame.originalColumn}`);
+            log(`📍 函数名: ${frame.functionName}\n`);
+          } else {
+            log('⚠️  Source Map 还原失败\n');
+            originalDiv.textContent = 'Source Map 解析失败';
+          }
+
+          // 完整错误信息
+          log('📄 完整错误信息:');
+          log(JSON.stringify(latestError, null, 2));
+        }
+      } catch (error) {
+        log(`❌ 获取失败: ${error.message}\n`);
+      }
+    }
+
+    // 清空错误
+    async function clearErrors() {
+      log('🗑️  清空服务器错误...');
+      try {
+        await fetch('http://localhost:3001/errors/clear', { method: 'POST' });
+        log('✅ 已清空\n');
+        minifiedDiv.textContent = '暂无数据';
+        originalDiv.textContent = '暂无数据';
+      } catch (error) {
+        log(`❌ 清空失败: ${error.message}\n`);
+      }
+    }
+
+    log('✅ 准备就绪，点击按钮开始测试\n');
+  </script>
+</body>
+</html>

@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>白屏检测测试</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .test-section h2 {
+            color: #555;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 14px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        button.primary {
+            background: #007bff;
+            color: white;
+        }
+
+        button.primary:hover {
+            background: #0056b3;
+        }
+
+        button.danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        button.danger:hover {
+            background: #c82333;
+        }
+
+        button.success {
+            background: #28a745;
+            color: white;
+        }
+
+        button.success:hover {
+            background: #218838;
+        }
+
+        .info {
+            background: #e7f3ff;
+            border-left: 4px solid #007bff;
+            padding: 12px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+        }
+
+        .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 12px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+        }
+
+        .status {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 13px;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        /* 空白页面样式 */
+        .blank-page {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            display: none;
+            z-index: 9999;
+        }
+
+        .blank-page.active {
+            display: block;
+        }
+
+        /* 最小内容页面 */
+        .minimal-content {
+            display: none;
+        }
+
+        .minimal-content.active {
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            z-index: 9999;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 白屏检测测试页面</h1>
+
+        <div class="test-section">
+            <h2>📋 测试说明</h2>
+            <div class="info">
+                <p>白屏检测会自动检测页面是否在加载后没有内容渲染。测试页面会在指定延迟后开始检测。</p>
+                <p><strong>默认配置：</strong></p>
+                <ul>
+                    <li>检测延迟：3秒后开始</li>
+                    <li>检测间隔：每秒检测一次</li>
+                    <li>最大检测次数：5次</li>
+                    <li>最小DOM元素阈值：10个</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>🧪 测试场景</h2>
+            <div class="button-group">
+                <button class="danger" onclick="testBlankScreen()">测试1：完全白屏</button>
+                <button class="danger" onclick="testMinimalContent()">测试2：内容过少</button>
+                <button class="primary" onclick="testNormalContent()">测试3：正常内容</button>
+                <button class="success" onclick="restorePage()">恢复页面</button>
+            </div>
+            <div class="warning">
+                <strong>注意：</strong>点击测试按钮后，页面会变白或清空内容，白屏检测会在3秒后自动触发。请查看控制台和服务器日志。
+            </div>
+            <div id="status" class="status info">
+                等待测试...
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>📊 错误监控状态</h2>
+            <div class="button-group">
+                <button class="primary" onclick="checkErrors()">查看服务器错误</button>
+            </div>
+            <pre id="error-output" style="background: #f8f9fa; padding: 15px; border-radius: 4px; overflow-x: auto;"></pre>
+        </div>
+
+        <div class="test-section">
+            <h2>🔧 当前DOM状态</h2>
+            <div id="dom-stats" class="status info">
+                总元素数: <span id="total-elements">0</span> |
+                Body子元素: <span id="body-elements">0</span> |
+                是否有内容: <span id="has-content">是</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 完全空白页面覆盖层 -->
+    <div id="blank-page" class="blank-page"></div>
+
+    <!-- 最小内容页面 -->
+    <div id="minimal-page" class="minimal-content">
+        <p>只有很少内容...</p>
+    </div>
+
+    <script src="/server/dist/error-monitor-web.umd.js"></script>
+    <script>
+        // 初始化错误监控
+        // UMD构建导出到 ErrorMonitorWeb 命名空间
+        const ErrorMonitorClass = window.ErrorMonitorWeb.default || window.ErrorMonitorWeb.ErrorMonitorWeb;
+        const monitor = new ErrorMonitorClass({
+            appId: 'blank-screen-test',
+            dsn: 'http://localhost:3001/collect',
+            blankScreenDetection: {
+                detectionDelay: 3000,    // 3秒后开始检测
+                minElements: 10,         // 最少10个元素
+                checkInterval: 1000,     // 每秒检测一次
+                maxChecks: 5,            // 最多检测5次
+                checkPerformance: true   // 检查Performance API
+            }
+        });
+
+        monitor.init();
+
+        console.log('✅ 白屏检测已启用');
+        console.log('📊 监控配置:', monitor.config);
+        console.log('📦 ErrorMonitorWeb 命名空间:', window.ErrorMonitorWeb);
+
+        // 只在非查看结果模式下清除之前的错误
+        const urlParams = new URLSearchParams(window.location.search);
+        const showResult = urlParams.get('showResult');
+        if (showResult !== 'true') {
+            fetch('http://localhost:3001/errors/clear', { method: 'POST' })
+                .then(() => console.log('✅ 已清除之前的错误'))
+                .catch(e => console.log('⚠️ 清除错误失败:', e));
+        }
+
+        // 更新DOM统计
+        function updateDomStats() {
+            const totalElements = document.querySelectorAll('*').length;
+            const bodyElements = document.body?.children.length || 0;
+            const hasContent = bodyElements > 0;
+
+            const totalEl = document.getElementById('total-elements');
+            const bodyEl = document.getElementById('body-elements');
+            const contentEl = document.getElementById('has-content');
+
+            if (totalEl) totalEl.textContent = totalElements;
+            if (bodyEl) bodyEl.textContent = bodyElements;
+            if (contentEl) contentEl.textContent = hasContent ? '是' : '否';
+        }
+
+        // 每秒更新DOM统计
+        setInterval(updateDomStats, 1000);
+        updateDomStats();
+
+        // 测试1：完全白屏
+        function testBlankScreen() {
+            console.log('🔴 测试场景1：完全白屏');
+
+            // 清除之前的错误
+            fetch('http://localhost:3001/errors/clear', { method: 'POST' })
+                .then(() => {
+                    console.log('✅ 已清除之前的错误');
+
+                    // 销毁旧的监控器
+                    monitor.destroy();
+                    console.log('✅ 已销毁旧的监控器');
+
+                    // 保存容器元素
+                    const container = document.querySelector('.container');
+
+                    // 创建新的监控器实例
+                    const newMonitor = new ErrorMonitorClass({
+                        appId: 'blank-screen-test',
+                        dsn: 'http://localhost:3001/collect',
+                        blankScreenDetection: {
+                            detectionDelay: 1000,    // 1秒后开始检测
+                            minElements: 20,         // 最少20个元素（提高阈值，当前只有16个，会触发白屏）
+                            checkInterval: 1000,     // 每秒检测一次
+                            maxChecks: 3,            // 检测3次
+                            checkPerformance: true
+                        }
+                    });
+
+                    // 初始化新监控器
+                    newMonitor.init();
+                    console.log('✅ 新监控器已初始化');
+
+                    // 移除所有主要内容
+                    if (container) {
+                        container.remove();
+                    }
+
+                    console.log('✅ 主要内容已移除，当前DOM元素数:', document.querySelectorAll('*').length);
+
+                    // 创建临时状态显示
+                    const statusDiv = document.createElement('div');
+                    statusDiv.id = 'temp-status';
+                    statusDiv.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#ff9800;color:white;padding:15px 25px;border-radius:4px;font-size:14px;z-index:10000;text-align:center;';
+                    statusDiv.innerHTML = '⚠️ 页面已清空！<br>白屏检测正在运行...<br><br>等待4秒查看结果...';
+                    document.body.appendChild(statusDiv);
+
+                    // 4秒后恢复并检查结果（1秒延迟 + 3次检测）
+                    setTimeout(() => {
+                        console.log('✅ 检查白屏检测结果');
+
+                        // 更新临时状态，添加查看结果按钮
+                        statusDiv.style.background = '#4CAF50';
+                        statusDiv.innerHTML = '✅ 白屏检测完成！<br><button onclick="window.location.href=window.location.pathname+\'?showResult=true\'" style="margin-top:10px;padding:8px 16px;background:white;color:#4CAF50;border:none;border-radius:4px;cursor:pointer;font-size:14px;">点击恢复页面并查看结果</button>';
+                    }, 4000);
+                })
+                .catch(e => {
+                    console.error('清除错误失败:', e);
+                    alert('❌ 清除错误失败: ' + e.message);
+                });
+        }
+
+        // 测试2：内容过少
+        function testMinimalContent() {
+            console.log('🔴 测试场景2：内容过少');
+
+            // 清除之前的错误
+            fetch('http://localhost:3001/errors/clear', { method: 'POST' })
+                .then(() => {
+                    console.log('✅ 已清除之前的错误');
+
+                    // 销毁旧的监控器
+                    monitor.destroy();
+                    console.log('✅ 已销毁旧的监控器');
+
+                    // 创建新的监控器实例
+                    const newMonitor = new ErrorMonitorClass({
+                        appId: 'blank-screen-test',
+                        dsn: 'http://localhost:3001/collect',
+                        blankScreenDetection: {
+                            detectionDelay: 1000,
+                            minElements: 20,         // 最少20个元素（当前只有16个，会触发白屏）
+                            checkInterval: 1000,
+                            maxChecks: 3,
+                            checkPerformance: true
+                        }
+                    });
+
+                    newMonitor.init();
+                    console.log('✅ 新监控器已初始化');
+
+                    // 移除主要内容
+                    const container = document.querySelector('.container');
+                    if (container) {
+                        container.remove();
+                    }
+
+                    console.log('✅ 主要内容已移除，当前DOM元素数:', document.querySelectorAll('*').length);
+
+                    // 创建临时状态显示
+                    const statusDiv = document.createElement('div');
+                    statusDiv.id = 'temp-status';
+                    statusDiv.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#ff9800;color:white;padding:15px 25px;border-radius:4px;font-size:14px;z-index:10000;text-align:center;';
+                    statusDiv.innerHTML = '⚠️ 页面内容已减少！<br>白屏检测正在运行...<br><br>等待4秒查看结果...';
+                    document.body.appendChild(statusDiv);
+
+                    setTimeout(() => {
+                        console.log('✅ 检查白屏检测结果');
+                        statusDiv.style.background = '#4CAF50';
+                        statusDiv.innerHTML = '✅ 白屏检测完成！<br><button onclick="location.reload()" style="margin-top:10px;padding:8px 16px;background:white;color:#4CAF50;border:none;border-radius:4px;cursor:pointer;font-size:14px;">点击恢复页面并查看结果</button>';
+                    }, 4000);
+                })
+                .catch(e => {
+                    console.error('清除错误失败:', e);
+                    alert('❌ 清除错误失败: ' + e.message);
+                });
+        }
+
+        // 测试3：正常内容（应该不会触发白屏检测）
+        function testNormalContent() {
+            document.getElementById('status').className = 'status success';
+            document.getElementById('status').textContent = '✅ 页面内容正常，白屏检测不会触发';
+            console.log('✅ 测试场景3：正常内容');
+            updateDomStats();
+        }
+
+        // 查看服务器错误
+        async function checkErrors() {
+            try {
+                const response = await fetch('http://localhost:3001/errors');
+                const result = await response.json();
+
+                // 服务器返回 { total: 0, errors: [] }
+                const errors = result.errors || [];
+
+                const output = document.getElementById('error-output');
+                if (errors.length === 0) {
+                    output.textContent = '暂无错误上报';
+                    document.getElementById('status').innerHTML = '⚠️ 没有检测到错误上报<br>可能原因：白屏检测未正确初始化或检测条件未满足';
+                } else {
+                    // 检查是否有白屏检测错误
+                    const blankScreenErrors = errors.filter(e => e.type === 'blank-screen');
+
+                    if (blankScreenErrors.length > 0) {
+                        // 找到白屏检测错误
+                        const latestBlankScreen = blankScreenErrors[blankScreenErrors.length - 1];
+                        output.textContent = JSON.stringify(errors, null, 2);
+                        document.getElementById('status').className = 'status success';
+                        document.getElementById('status').innerHTML =
+                            '✅ <strong>白屏检测成功触发！</strong><br>' +
+                            '检测到 ' + blankScreenErrors.length + ' 个白屏错误<br>' +
+                            'DOM元素数: ' + latestBlankScreen.context.domElements + '<br>' +
+                            'Body子元素: ' + latestBlankScreen.context.bodyElements + '<br>' +
+                            '是否有内容: ' + (latestBlankScreen.context.hasContent ? '是' : '否');
+
+                        // 高亮显示白屏错误
+                        console.log('✅ 白屏检测成功上报:', latestBlankScreen);
+                    } else {
+                        output.textContent = JSON.stringify(errors, null, 2);
+                        document.getElementById('status').innerHTML = '⚠️ 有错误上报，但没有白屏检测错误<br>最近的错误类型: ' + errors[errors.length - 1]?.type;
+                    }
+                }
+            } catch (error) {
+                console.error('获取错误失败:', error);
+                document.getElementById('error-output').textContent = '获取错误失败: ' + error.message;
+                document.getElementById('status').className = 'status error';
+                document.getElementById('status').textContent = '❌ 获取错误失败: ' + error.message;
+            }
+        }
+
+        // 页面加载完成后提示
+        window.addEventListener('load', () => {
+            console.log('✅ 页面加载完成');
+
+            // 检查URL参数，看是否需要自动显示测试结果
+            const urlParams = new URLSearchParams(window.location.search);
+            const showResult = urlParams.get('showResult');
+
+            if (showResult === 'true') {
+                console.log('✅ 自动显示白屏测试结果');
+                // 自动检查并显示结果
+                setTimeout(() => {
+                    checkErrors();
+                    // 清除URL参数
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }, 500);
+            } else {
+                console.log('⏰ 白屏检测将在3秒后开始');
+                console.log('💡 点击测试按钮触发白屏场景');
+            }
+        });
+    </script>
+</body>
+</html>

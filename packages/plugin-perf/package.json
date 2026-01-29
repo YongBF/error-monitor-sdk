@@ -1,0 +1,24 @@
+{
+  "name": "@error-monitor/plugin-perf",
+  "version": "1.0.0",
+  "description": "Performance monitoring plugin for error-monitor-sdk",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": ["dist"],
+  "keywords": ["error", "monitor", "plugin", "performance", "web-vitals"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "error-monitor-core": "workspace:*"
+  },
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite build --watch",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "vite": "^5.1.6",
+    "vite-plugin-dts": "^3.7.3"
+  }
+}
