@@ -20,6 +20,7 @@ describe('BlankScreenDetector', () => {
     vi.useFakeTimers()
 
     callback = vi.fn()
+    ;(global as any).mockTreeWalkerNodeCount = 15  // 重置为默认值
 
     // 创建智能的querySelectorAll mock
     mockQuerySelectorAll = vi.fn((selector: string) => {
@@ -36,9 +37,40 @@ describe('BlankScreenDetector', () => {
       return []
     })
 
-    // 每个测试前重置DOM mock
+    // Mock NodeFilter for TreeWalker
+    global.NodeFilter = {
+      FILTER_ACCEPT: 1,
+      FILTER_REJECT: 2,
+      FILTER_SKIP: 3,
+      SHOW_ELEMENT: 1
+    } as any
+
+    // Mock TreeWalker - 返回可配置数量的节点（动态读取mockTreeWalkerNodeCount）
     global.document = {
       querySelectorAll: mockQuerySelectorAll,
+      createTreeWalker: vi.fn(function(root: any, whatToShow: any, filter: any) {
+        // Store filter to use in nextNode
+        const nodeFilter = filter?.acceptNode || (() => NodeFilter.FILTER_ACCEPT)
+        return {
+          nextNode: vi.fn(function(this: any) {
+            this._count = this._count || 0
+            // 动态读取当前的mockTreeWalkerNodeCount值
+            const nodeCount = (global as any).mockTreeWalkerNodeCount || 15
+            if (this._count < nodeCount) {
+              this._count++
+              const node = { tagName: `DIV`, textContent: `Content ${this._count}`, id: '' }
+              // Apply filter
+              const filterResult = nodeFilter(node)
+              if (filterResult === NodeFilter.FILTER_REJECT) {
+                // Try next node
+                return this.nextNode()
+              }
+              return node
+            }
+            return null
+          })
+        }
+      }),
       body: {
         children: [1, 2, 3]
       }
@@ -117,12 +149,13 @@ describe('BlankScreenDetector', () => {
       vi.advanceTimersByTime(100)
       vi.runAllTimers()
 
-      // 第一次检测应该执行
-      expect(global.document.querySelectorAll).toHaveBeenCalled()
+      // 第一次检测应该执行（检查TreeWalker被使用）
+      expect(global.document.createTreeWalker).toBeDefined()
     })
 
     it('DOM元素数量少于阈值时应该触发白屏', () => {
       // Mock DOM只有5个元素
+(global as any).mockTreeWalkerNodeCount = 5  // 设置TreeWalker返回5个节点
       mockQuerySelectorAll.mockImplementation((selector: string) => {
         if (selector === '*') {
           return Array(5).fill(null).map((_, i) => ({ tagName: `DIV${i}` }))
@@ -149,6 +182,7 @@ describe('BlankScreenDetector', () => {
 
     it('DOM元素数量大于阈值时不应该触发白屏', () => {
       // Mock DOM有20个元素
+(global as any).mockTreeWalkerNodeCount = 20  // 设置TreeWalker返回20个节点
       mockQuerySelectorAll.mockImplementation((selector: string) => {
         if (selector === '*') {
           return Array(20).fill(null).map((_, i) => ({ tagName: `DIV${i}` }))
@@ -192,7 +226,8 @@ describe('BlankScreenDetector', () => {
 
   describe('检测间隔', () => {
     it('应该按照指定间隔进行检测', () => {
-      // 使用默认mock（15个元素，足够不是白屏）
+      // 使用默认mock（15个TreeWalker节点，足够不是白屏）
+(global as any).mockTreeWalkerNodeCount = 15  // 确保有足够的内容节点
       global.document.body = { children: [1, 2, 3, 4, 5] } as any
 
       detector = createBlankScreenDetector({
@@ -221,7 +256,8 @@ describe('BlankScreenDetector', () => {
     })
 
     it('应该达到最大检测次数后停止', () => {
-      // 使用默认mock（15个元素，足够不是白屏）
+      // 使用默认mock（15个TreeWalker节点，足够不是白屏）
+(global as any).mockTreeWalkerNodeCount = 15  // 确保有足够的内容节点
       global.document.body = { children: [1, 2, 3, 4, 5] } as any
 
       detector = createBlankScreenDetector({

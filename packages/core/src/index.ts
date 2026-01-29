@@ -3,6 +3,14 @@
  * 核心错误监控模块
  */
 
+import { Logger } from './logger'
+import { BREADCRUMBS, SAMPLING, REPORTING, DEFAULT_CONFIG } from './constants'
+import { BatchQueue } from './batch-queue'
+import { OfflineCache } from './offline-cache'
+
+// 导出Logger供外部使用
+export { Logger }
+
 // 类型定义
 export interface ErrorType {
   type: 'js' | 'promise' | 'network' | 'resource' | 'custom'
@@ -149,15 +157,100 @@ function generateEventId(): string {
 }
 
 /**
+ * 环形缓冲区实现
+ * 性能优化：添加和获取都是O(1)时间复杂度
+ */
+class RingBuffer<T> {
+  private buffer: (T | undefined)[]
+  private capacity: number
+  private head: number = 0
+  private tail: number = 0
+  private _size: number = 0
+
+  constructor(capacity: number) {
+    this.capacity = capacity
+    this.buffer = new Array(capacity)
+  }
+
+  /**
+   * 添加元素到缓冲区（O(1)时间复杂度）
+   */
+  push(item: T): void {
+    this.buffer[this.tail] = item
+    this.tail = (this.tail + 1) % this.capacity
+
+    if (this._size < this.capacity) {
+      this._size++
+    } else {
+      // 缓冲区已满，移动head指针
+      this.head = (this.head + 1) % this.capacity
+    }
+  }
+
+  /**
+   * 获取所有元素（按插入顺序）
+   */
+  toArray(): T[] {
+    const result: T[] = []
+    for (let i = 0; i < this._size; i++) {
+      const index = (this.head + i) % this.capacity
+      const item = this.buffer[index]
+      if (item !== undefined) {
+        result.push(item)
+      }
+    }
+    return result
+  }
+
+  /**
+   * 获取当前大小
+   */
+  getSize(): number {
+    return this._size
+  }
+
+  /**
+   * 清空缓冲区
+   */
+  clear(): void {
+    this.buffer = new Array(this.capacity)
+    this.head = 0
+    this.tail = 0
+    this._size = 0
+  }
+
+  /**
+   * 兼容性属性：获取当前大小
+   */
+  get length(): number {
+    return this._size
+  }
+
+  /**
+   * 兼容性：数组索引访问（只读）
+   */
+  get(index: number): T | undefined {
+    if (index < 0 || index >= this._size) {
+      return undefined
+    }
+    const actualIndex = (this.head + index) % this.capacity
+    return this.buffer[actualIndex]
+  }
+}
+
+/**
  * ErrorMonitor 核心类
  */
 export class ErrorMonitor implements Core {
   public config: Config
   private isInitialized = false
-  private breadcrumbs: Breadcrumb[] = []
-  private maxBreadcrumbs = 50
+  private breadcrumbs: RingBuffer<Breadcrumb>
+  private maxBreadcrumbs = BREADCRUMBS.MAX_SIZE
   private plugins: Plugin[] = []
   private sessionId = generateSessionId()
+  private logger: Logger
+  private batchQueue: BatchQueue | null = null
+  private offlineCache: OfflineCache | null = null
 
   constructor(config: Config) {
     // 应用默认配置
@@ -175,15 +268,44 @@ export class ErrorMonitor implements Core {
         minLevel: 'info'
       },
       report: {
-        delay: 1000,
-        batchSize: 10
+        delay: REPORTING.DEFAULT_DELAY,
+        batchSize: REPORTING.DEFAULT_BATCH_SIZE
       },
-      sampleRate: 1.0,
-      errorSampleRate: 1.0,
-      enabled: true,
-      debug: false,
+      sampleRate: SAMPLING.DEFAULT_RATE,
+      errorSampleRate: SAMPLING.DEFAULT_RATE,
+      enabled: DEFAULT_CONFIG.ENABLED,
+      debug: DEFAULT_CONFIG.DEBUG,
       ...config
     }
+
+    // 初始化日志系统
+    // @ts-ignore - LogLevel enum is imported from logger
+    this.logger = new Logger(this.config.enabled, this.config.debug ? 0 : 1) // 0=DEBUG, 1=INFO
+
+    // 初始化环形缓冲区（性能优化：O(1)添加操作）
+    this.breadcrumbs = new RingBuffer<Breadcrumb>(this.maxBreadcrumbs)
+
+    // 初始化批量上报队列
+    if (this.config.report) {
+      this.batchQueue = new BatchQueue(
+        {
+          batchSize: this.config.report.batchSize || REPORTING.DEFAULT_BATCH_SIZE,
+          delay: this.config.report.delay || REPORTING.DEFAULT_DELAY,
+          enabled: true
+        },
+        (reports) => this.sendBatchToServer(reports)
+      )
+    }
+
+    // 初始化离线缓存（默认启用）
+    this.offlineCache = new OfflineCache(
+      {
+        maxCacheSize: 100,
+        enabled: true,
+        storageKey: `error_monitor_cache_${this.config.appId}`
+      },
+      (report) => this.sendToServerDirectly(report)
+    )
   }
 
   /**
@@ -191,9 +313,7 @@ export class ErrorMonitor implements Core {
    */
   updateConfig(updates: Partial<Config>): void {
     this.config = { ...this.config, ...updates }
-    if (this.config.debug) {
-      console.log('[ErrorMonitor] Config updated:', this.config)
-    }
+    this.logger.debug('Config updated:', this.config)
   }
 
   /**
@@ -201,7 +321,8 @@ export class ErrorMonitor implements Core {
    */
   enable(): void {
     this.config.enabled = true
-    console.log('[ErrorMonitor] SDK enabled')
+    this.logger.setEnabled(true)
+    this.logger.info('SDK enabled')
   }
 
   /**
@@ -209,7 +330,8 @@ export class ErrorMonitor implements Core {
    */
   disable(): void {
     this.config.enabled = false
-    console.log('[ErrorMonitor] SDK disabled')
+    this.logger.setEnabled(false)
+    this.logger.info('SDK disabled')
   }
 
   /**
@@ -240,14 +362,14 @@ export class ErrorMonitor implements Core {
    * 设置采样率
    */
   setSampleRate(rate: number): void {
-    this.config.sampleRate = Math.max(0, Math.min(1, rate))
+    this.config.sampleRate = Math.max(SAMPLING.MIN_RATE, Math.min(SAMPLING.MAX_RATE, rate))
   }
 
   /**
    * 设置错误采样率
    */
   setErrorSampleRate(rate: number): void {
-    this.config.errorSampleRate = Math.max(0, Math.min(1, rate))
+    this.config.errorSampleRate = Math.max(SAMPLING.MIN_RATE, Math.min(SAMPLING.MAX_RATE, rate))
   }
 
   /**
@@ -255,7 +377,7 @@ export class ErrorMonitor implements Core {
    */
   init(): void {
     if (this.isInitialized) {
-      console.warn('[ErrorMonitor] Already initialized')
+      this.logger.warn('Already initialized')
       return
     }
 
@@ -266,7 +388,7 @@ export class ErrorMonitor implements Core {
       plugin.setup?.(this)
     })
 
-    console.log('[ErrorMonitor] Initialized with appId:', this.config.appId)
+    this.logger.info('Initialized with appId:', this.config.appId)
   }
 
   /**
@@ -286,7 +408,7 @@ export class ErrorMonitor implements Core {
    */
   capture(error: ErrorType | Error, options?: CaptureOptions): void {
     if (!this.isInitialized) {
-      console.warn('[ErrorMonitor] Not initialized')
+      this.logger.warn('Not initialized')
       return
     }
 
@@ -318,9 +440,7 @@ export class ErrorMonitor implements Core {
 
     // 过滤检查
     if (!opts.skipFilter && this.shouldFilter(normalizedError)) {
-      if (this.config.debug) {
-        console.log('[ErrorMonitor] Error filtered:', normalizedError.message)
-      }
+      this.logger.debug('Error filtered:', normalizedError.message)
       return
     }
 
@@ -363,7 +483,7 @@ export class ErrorMonitor implements Core {
         userId: opts.user.id || this.config.userId,
         tags: { ...this.config.tags, ...opts.tags }
       },
-      breadcrumbs: [...this.breadcrumbs],
+      breadcrumbs: this.breadcrumbs.toArray(),
       extra: { ...processedError.context, ...opts.extra }
     }
 
@@ -438,12 +558,16 @@ export class ErrorMonitor implements Core {
       }
     }
 
-    // 发送到服务端
-    this.sendToServer(processedReport)
+    // 使用批量队列上报（如果启用）或直接上报
+    if (this.batchQueue) {
+      this.batchQueue.add(processedReport)
+    } else {
+      this.sendToServer(processedReport)
+    }
   }
 
   /**
-   * 添加面包屑
+   * 添加面包屑（使用环形缓冲区，O(1)性能）
    */
   addBreadcrumb(crumb: Breadcrumb): void {
     this.breadcrumbs.push({
@@ -452,11 +576,6 @@ export class ErrorMonitor implements Core {
       message: crumb.message,
       data: crumb.data
     })
-
-    // 限制面包屑数量
-    if (this.breadcrumbs.length > this.maxBreadcrumbs) {
-      this.breadcrumbs.shift()
-    }
   }
 
   /**
@@ -475,9 +594,29 @@ export class ErrorMonitor implements Core {
   }
 
   /**
-   * 发送到服务端
+   * 发送到服务端（通过离线缓存）
    */
   private sendToServer(data: ErrorReport): void {
+    if (this.offlineCache) {
+      // 使用离线缓存（会根据网络状态决定是发送还是缓存）
+      this.offlineCache.send(data)
+    } else {
+      // 直接发送（降级方案）
+      this.sendToServerDirectly(data)
+    }
+  }
+
+  /**
+   * 直接发送到服务端（不经过离线缓存）
+   */
+  private sendToServerDirectly(data: ErrorReport): void {
+    // 如果配置了customReporter，使用它
+    if (this.config.report?.customReporter) {
+      this.config.report.customReporter(data)
+      return
+    }
+
+    // 默认发送逻辑
     if (typeof navigator === 'undefined') return
 
     const payload = JSON.stringify(data)
@@ -499,7 +638,46 @@ export class ErrorMonitor implements Core {
           'Content-Type': 'application/json'
         }
       }).catch(err => {
-        console.error('[ErrorMonitor] Failed to send report:', err)
+        this.logger.error('Failed to send report:', err)
+      })
+    }
+  }
+
+  /**
+   * 批量发送到服务端
+   */
+  private sendBatchToServer(reports: ErrorReport[]): void {
+    // 如果配置了customReporter，使用它（批量格式）
+    if (this.config.report?.customReporter) {
+      // 批量模式：发送包装后的批量数据
+      const customData = { reports }
+      this.config.report.customReporter(customData)
+      return
+    }
+
+    // 默认发送逻辑
+    if (typeof navigator === 'undefined') return
+
+    const payload = JSON.stringify({ reports })
+
+    // 使用sendBeacon（如果可用）
+    if (navigator.sendBeacon) {
+      const blob = new Blob([payload], { type: 'application/json' })
+      navigator.sendBeacon(this.config.dsn, blob)
+      return
+    }
+
+    // 降级到fetch
+    if (typeof fetch !== 'undefined') {
+      fetch(this.config.dsn, {
+        method: 'POST',
+        body: payload,
+        keepalive: true,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }).catch(err => {
+        this.logger.error('Failed to send batch reports:', err)
       })
     }
   }
@@ -508,16 +686,28 @@ export class ErrorMonitor implements Core {
    * 销毁实例
    */
   destroy(): void {
+    // 清理批量队列
+    if (this.batchQueue) {
+      this.batchQueue.destroy()
+      this.batchQueue = null
+    }
+
+    // 清理离线缓存
+    if (this.offlineCache) {
+      this.offlineCache.destroy()
+      this.offlineCache = null
+    }
+
     // 清理插件
     this.plugins.forEach(plugin => {
       plugin.teardown?.()
     })
 
     this.plugins = []
-    this.breadcrumbs = []
+    this.breadcrumbs.clear()
     this.isInitialized = false
 
-    console.log('[ErrorMonitor] Destroyed')
+    this.logger.info('Destroyed')
   }
 }
 

@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Error Monitor SDK - 功能测试页面</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 20px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      color: white;
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 2.5em;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .card h2 {
+      color: #667eea;
+      margin-bottom: 15px;
+      font-size: 1.3em;
+      border-bottom: 2px solid #f0f0f0;
+      padding-bottom: 10px;
+    }
+
+    .button-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    button.secondary {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+
+    button.success {
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+
+    button.warning {
+      background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+    }
+
+    .log-panel {
+      background: #1e1e1e;
+      color: #00ff00;
+      padding: 20px;
+      border-radius: 12px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      max-height: 400px;
+      overflow-y: auto;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .log-entry {
+      margin-bottom: 8px;
+      padding: 5px;
+      border-left: 3px solid #00ff00;
+      padding-left: 10px;
+    }
+
+    .log-entry.error {
+      color: #ff6b6b;
+      border-left-color: #ff6b6b;
+    }
+
+    .log-entry.warn {
+      color: #ffd93d;
+      border-left-color: #ffd93d;
+    }
+
+    .log-entry.info {
+      color: #6bcbff;
+      border-left-color: #6bcbff;
+    }
+
+    .metrics-panel {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 15px;
+      margin-top: 15px;
+    }
+
+    .metric-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .metric-item:last-child {
+      border-bottom: none;
+    }
+
+    .metric-label {
+      font-weight: 600;
+      color: #555;
+    }
+
+    .metric-value {
+      color: #667eea;
+      font-weight: 700;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      margin-left: 10px;
+    }
+
+    .status-badge.healthy {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .status-badge.unhealthy {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    .clear-btn {
+      background: #6c757d;
+      margin-top: 10px;
+    }
+
+    #config-display {
+      background: #f8f9fa;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      margin-bottom: 15px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🚀 Error Monitor SDK - 功能测试</h1>
+
+    <div class="grid">
+      <!-- 错误捕获测试 -->
+      <div class="card">
+        <h2>❌ 错误捕获测试</h2>
+        <div class="button-group">
+          <button onclick="testJSError()">触发 JS 错误</button>
+          <button onclick="testPromiseError()" class="secondary">触发 Promise 错误</button>
+          <button onclick="testNetworkError()" class="warning">触发网络错误</button>
+          <button onclick="testManualError()" class="success">手动上报错误</button>
+          <button onclick="testManualMessage()">手动上报消息</button>
+        </div>
+      </div>
+
+      <!-- 性能监控测试 -->
+      <div class="card">
+        <h2>⚡ 性能监控</h2>
+        <div class="button-group">
+          <button onclick="showPerformanceMetrics()">显示性能指标</button>
+          <button onclick="showPerformanceSummary()" class="secondary">性能摘要</button>
+          <button onclick="checkPerformanceHealth()" class="success">健康检查</button>
+          <button onclick="testBatchProcessing()" class="warning">测试批量处理 (5个错误)</button>
+        </div>
+        <div class="metrics-panel" id="performance-metrics"></div>
+      </div>
+
+      <!-- 面包屑测试 -->
+      <div class="card">
+        <h2>🍞 面包屑测试</h2>
+        <div class="button-group">
+          <button onclick="addNavigationCrumb()">添加导航面包屑</button>
+          <button onclick="addClickCrumb()" class="secondary">添加点击面包屑</button>
+          <button onclick="addCustomCrumb()" class="success">添加自定义面包屑</button>
+          <button onclick="addErrorCrumb()" class="warning">添加错误面包屑</button>
+        </div>
+      </div>
+
+      <!-- 配置测试 -->
+      <div class="card">
+        <h2>⚙️ 配置测试</h2>
+        <div id="config-display"></div>
+        <div class="button-group">
+          <button onclick="toggleSDK()">切换 SDK 启用状态</button>
+          <button onclick="updateConfig()" class="secondary">更新采样率</button>
+          <button onclick="setUserInfo()" class="success">设置用户信息</button>
+          <button onclick="testFiltering()" class="warning">测试错误过滤</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 日志面板 -->
+    <div class="card">
+      <h2>
+        📋 实时日志
+        <span id="status-badge" class="status-badge healthy">SDK 运行中</span>
+      </h2>
+      <div class="log-panel" id="log-panel">
+        <div class="log-entry info">[系统] 页面加载完成，SDK 初始化中...</div>
+      </div>
+      <button onclick="clearLogs()" class="clear-btn">清空日志</button>
+    </div>
+  </div>
+
+  <script src="dist/error-monitor-web.umd.js"></script>
+  <script>
+    // 检查SDK是否加载成功
+    if (typeof ErrorMonitorWeb === 'undefined') {
+      document.getElementById('log-panel').innerHTML +=
+        '<div class="log-entry error">[错误] SDK 加载失败，请确保已正确构建项目</div>';
+    }
+  </script>
+  <script>
+    let monitor;
+    let errorCount = 0;
+
+    // 初始化 SDK
+    function initSDK() {
+      monitor = new ErrorMonitorWeb({
+        appId: 'test-app-123',
+        dsn: 'http://localhost:3001/api/collect',
+        environment: 'development',
+        release: '1.0.0',
+        debug: true,
+        enabled: true,
+
+        // 批量上报配置
+        report: {
+          delay: 2000,        // 2秒后批量上报
+          batchSize: 5,       // 收集5个错误后上报
+          // 自定义上报函数
+          customReporter: (data) => {
+            log('info', '📤 错误已上报', {
+              type: data.type,
+              level: data.level,
+              message: data.message.substring(0, 40) + '...',
+              eventId: data.eventId.substring(0, 8) + '...'
+            });
+
+            // 实际发送到服务器
+            fetch('http://localhost:3001/api/collect', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(data)
+            }).catch(err => {
+              log('error', '上报失败', { error: err.message });
+            });
+          }
+        },
+
+        // 采样配置
+        sampleRate: 1.0,      // 100% 采样
+        errorSampleRate: 1.0, // 100% 错误采样
+
+        // 自动捕获
+        autoCapture: {
+          js: true,
+          promise: true,
+          network: true,
+          resource: true
+        },
+
+        // 过滤配置
+        filter: {
+          ignoreErrors: [
+            /Script error/i,  // 忽略跨域脚本错误
+            /^Test ignored/i  // 忽略以"Test ignored"开头的错误
+          ],
+          minLevel: 'info'
+        }
+      });
+
+      // 添加插件来监听SDK的生命周期事件
+      monitor.use({
+        name: 'test-logger-plugin',
+        version: '1.0.0',
+
+        // 在捕获错误之前
+        beforeCapture: (error) => {
+          log('info', '🎯 捕获到错误', {
+            type: error.type,
+            message: error.message.substring(0, 40) + (error.message.length > 40 ? '...' : '')
+          });
+          return error;
+        },
+
+        // 在捕获错误之后、上报之前
+        afterCapture: (report) => {
+          log('info', '✅ 错误报告已生成', {
+            eventId: report.eventId.substring(0, 8) + '...',
+            level: report.level,
+            breadcrumbs: report.breadcrumbs.length + ' 条',
+            url: window.location.href
+          });
+        },
+
+        // 在上报之前
+        beforeReport: (report) => {
+          log('info', '📤 准备上报错误', {
+            eventId: report.eventId.substring(0, 8) + '...',
+            type: report.type,
+            message: report.message.substring(0, 30) + '...'
+          });
+          return report;
+        }
+      });
+
+      monitor.init();
+
+      // 显示配置
+      const configDisplay = document.getElementById('config-display');
+      configDisplay.innerHTML = `
+        <strong>当前配置：</strong><br>
+        • AppID: ${monitor.config.appId}<br>
+        • 环境: ${monitor.config.environment || 'N/A'}<br>
+        • 批量大小: ${monitor.config.report?.batchSize}<br>
+        • 上报延迟: ${monitor.config.report?.delay}ms<br>
+        • 采样率: ${(monitor.config.sampleRate * 100).toFixed(0)}%<br>
+        • 状态: ${monitor.config.enabled ? '✅ 启用' : '❌ 禁用'}
+      `;
+
+      log('info', 'SDK 初始化成功', {
+        appId: monitor.config.appId,
+        batchDelay: monitor.config.report?.delay + 'ms',
+        batchSize: monitor.config.report?.batchSize
+      });
+
+      // 自动显示性能指标
+      setTimeout(() => {
+        showPerformanceMetrics();
+      }, 1000);
+    }
+
+    // 日志函数
+    function log(level, message, data) {
+      const logPanel = document.getElementById('log-panel');
+      const timestamp = new Date().toLocaleTimeString();
+      const dataStr = data ? ` | ${JSON.stringify(data)}` : '';
+      const logEntry = document.createElement('div');
+      logEntry.className = `log-entry ${level}`;
+      logEntry.textContent = `[${timestamp}] [${level.toUpperCase()}] ${message}${dataStr}`;
+      logPanel.appendChild(logEntry);
+      logPanel.scrollTop = logPanel.scrollHeight;
+    }
+
+    function clearLogs() {
+      document.getElementById('log-panel').innerHTML = '';
+      log('info', '日志已清空');
+    }
+
+    // 测试 JS 错误
+    function testJSError() {
+      errorCount++;
+      log('warn', `🧪 开始测试 JS 错误 #${errorCount}`);
+      try {
+        throw new Error(`测试 JS 错误 #${errorCount} - This is a test JavaScript error`);
+      } catch (error) {
+        log('info', '📝 调用 monitor.captureError()...');
+        monitor.captureError(error, {
+          level: 'error',
+          tags: { test: 'js-error', manual: 'true' },
+          extra: { errorCount }
+        });
+      }
+    }
+
+    // 测试 Promise 错误
+    function testPromiseError() {
+      errorCount++;
+      log('warn', `🧪 开始测试 Promise 错误 #${errorCount}`);
+      log('info', '📝 创建 rejected Promise...');
+
+      Promise.reject(new Error(`测试 Promise 错误 #${errorCount} - This is a test promise rejection`))
+        .catch(err => {
+          log('error', 'Promise 被 catch 了，但全局 unhandledrejection 可能已经触发', {
+            message: err.message
+          });
+        });
+    }
+
+    // 测试网络错误
+    function testNetworkError() {
+      errorCount++;
+      log('warn', `🧪 开始测试网络错误 #${errorCount}`);
+      log('info', '📝 发起请求到无效域名...');
+
+      fetch('http://invalid-domain-test-12345.com')
+        .then(() => {
+          log('info', '⚠️ 网络请求意外成功');
+        })
+        .catch(err => {
+          log('error', '❌ 网络请求失败（可能被 SDK 捕获）', {
+            error: err.message
+          });
+        });
+    }
+
+    // 手动上报错误
+    function testManualError() {
+      errorCount++;
+      log('warn', `🧪 手动上报错误 #${errorCount}`);
+      log('info', '📝 调用 monitor.capture()...');
+
+      const error = new Error(`手动上报的自定义错误 #${errorCount}`);
+      monitor.capture({
+        type: 'custom',
+        message: error.message,
+        stack: error.stack,
+        context: {
+          action: 'manual-report',
+          timestamp: Date.now(),
+          errorCount
+        }
+      }, {
+        level: 'error',
+        tags: { type: 'manual', source: 'test-page' },
+        extra: { testInfo: 'This is a manual error report test' }
+      });
+    }
+
+    // 手动上报消息
+    function testManualMessage() {
+      errorCount++;
+      log('warn', `🧪 手动上报消息 #${errorCount}`);
+      log('info', '📝 调用 monitor.captureMessage()...');
+
+      monitor.captureMessage(
+        `这是一条测试消息 #${errorCount} - Test message for error monitoring`,
+        'info',
+        {
+          tags: { type: 'message', source: 'test-page' },
+          extra: { errorCount, timestamp: Date.now() }
+        }
+      );
+    }
+
+    // 显示性能指标
+    function showPerformanceMetrics() {
+      const metrics = monitor.getPerformanceMetrics();
+      const panel = document.getElementById('performance-metrics');
+
+      let html = '<div class="metric-item"><span class="metric-label">SDK 初始化</span>';
+
+      if (metrics.initTime) {
+        html += `<span class="metric-value">${metrics.initTime.duration.toFixed(2)} ms</span></div>`;
+      } else {
+        html += '<span class="metric-value">暂无数据</span></div>';
+      }
+
+      if (metrics.errorProcessing) {
+        const ep = metrics.errorProcessing;
+        html += `
+          <div class="metric-item">
+            <span class="metric-label">错误处理</span>
+            <span class="metric-value">${ep.totalErrors} 次 | 平均 ${ep.averageProcessingTime.toFixed(2)} ms</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-label">处理时间范围</span>
+            <span class="metric-value">${ep.minProcessingTime.toFixed(2)} - ${ep.maxProcessingTime.toFixed(2)} ms</span>
+          </div>
+        `;
+      }
+
+      if (metrics.upload) {
+        const up = metrics.upload;
+        const successRate = ((up.totalUploads - up.failedUploads) / up.totalUploads * 100).toFixed(1);
+        html += `
+          <div class="metric-item">
+            <span class="metric-label">数据上报</span>
+            <span class="metric-value">${up.totalUploads} 次 | 成功率 ${successRate}%</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-label">上报耗时</span>
+            <span class="metric-value">平均 ${up.averageUploadTime.toFixed(2)} ms</span>
+          </div>
+        `;
+      }
+
+      if (metrics.memory) {
+        const mem = metrics.memory;
+        const usedMB = (mem.usedJSHeapSize / 1024 / 1024).toFixed(2);
+        const totalMB = (mem.totalJSHeapSize / 1024 / 1024).toFixed(2);
+        html += `
+          <div class="metric-item">
+            <span class="metric-label">内存使用</span>
+            <span class="metric-value">${usedMB} MB / ${totalMB} MB</span>
+          </div>
+        `;
+      }
+
+      panel.innerHTML = html;
+      log('info', '性能指标已更新');
+    }
+
+    // 显示性能摘要
+    function showPerformanceSummary() {
+      const summary = monitor.getPerformanceSummary();
+      log('info', '📊 性能摘要', { summary });
+      alert('性能摘要：\n\n' + summary);
+    }
+
+    // 检查性能健康
+    function checkPerformanceHealth() {
+      const health = monitor.checkPerformanceHealth();
+      const badge = document.getElementById('status-badge');
+
+      if (health.healthy) {
+        badge.className = 'status-badge healthy';
+        badge.textContent = '✅ 性能健康';
+        log('info', '✅ 性能健康检查通过');
+      } else {
+        badge.className = 'status-badge unhealthy';
+        badge.textContent = '⚠️ 性能警告';
+        log('warn', '⚠️ 性能问题', { issues: health.issues });
+        alert('性能警告：\n\n' + health.issues.join('\n'));
+      }
+    }
+
+    // 测试批量处理
+    function testBatchProcessing() {
+      log('warn', '🔄 开始批量处理测试 - 将触发 5 个错误');
+      log('info', `📊 批量配置：batchSize=${monitor.config.report?.batchSize}, delay=${monitor.config.report?.delay}ms`);
+
+      for (let i = 1; i <= 5; i++) {
+        setTimeout(() => {
+          log('info', `📝 触发错误 #${i}/${5}...`);
+          monitor.capture({
+            type: 'custom',
+            message: `批量测试错误 #${i} - Batch Test Error`,
+            context: {
+              batchIndex: i,
+              totalInBatch: 5,
+              timestamp: Date.now()
+            }
+          });
+        }, i * 200);
+      }
+
+      log('info', `⏳ 所有错误已触发，将在 ${monitor.config.report?.delay}ms 后批量上报`);
+    }
+
+    // 添加导航面包屑
+    function addNavigationCrumb() {
+      monitor.addBreadcrumb({
+        type: 'navigation',
+        message: '导航到测试页面',
+        data: { from: 'home', to: 'test' }
+      });
+      log('info', '🍞 导航面包屑已添加');
+    }
+
+    // 添加点击面包屑
+    function addClickCrumb() {
+      monitor.addBreadcrumb({
+        type: 'ui',
+        message: '用户点击按钮',
+        data: { element: 'test-button', action: 'click' }
+      });
+      log('info', '🍞 点击面包屑已添加');
+    }
+
+    // 添加自定义面包屑
+    function addCustomCrumb() {
+      monitor.addBreadcrumb({
+        type: 'custom',
+        message: '自定义事件',
+        data: { userId: '123', action: 'test' }
+      });
+      log('info', '🍞 自定义面包屑已添加');
+    }
+
+    // 添加错误面包屑
+    function addErrorCrumb() {
+      monitor.addBreadcrumb({
+        type: 'error',
+        message: '发生警告',
+        data: { code: 'WARN-001', severity: 'medium' }
+      });
+      log('info', '🍞 错误面包屑已添加');
+    }
+
+    // 切换 SDK 启用状态
+    function toggleSDK() {
+      if (monitor.config.enabled) {
+        monitor.disable();
+        log('warn', '🔴 SDK 已禁用');
+        document.getElementById('status-badge').className = 'status-badge unhealthy';
+        document.getElementById('status-badge').textContent = 'SDK 已禁用';
+      } else {
+        monitor.enable();
+        log('info', '🟢 SDK 已启用');
+        document.getElementById('status-badge').className = 'status-badge healthy';
+        document.getElementById('status-badge').textContent = 'SDK 运行中';
+      }
+    }
+
+    // 更新配置
+    function updateConfig() {
+      const newRate = Math.random();
+      monitor.setSampleRate(newRate);
+      monitor.setErrorSampleRate(newRate);
+      log('info', '⚙️ 采样率已更新', {
+        sampleRate: (newRate * 100).toFixed(1) + '%'
+      });
+    }
+
+    // 设置用户信息
+    function setUserInfo() {
+      monitor.setUser({
+        id: 'user-' + Date.now(),
+        username: 'test-user',
+        email: 'test@example.com',
+        role: 'tester'
+      });
+      log('info', '👤 用户信息已设置');
+    }
+
+    // 测试过滤
+    function testFiltering() {
+      log('info', '🧪 测试错误过滤...');
+
+      // 这个错误应该被过滤掉
+      monitor.captureMessage('Test ignored error - should be filtered', 'warn');
+
+      // 这个错误不应该被过滤
+      monitor.captureMessage('This error should NOT be filtered', 'error');
+
+      log('info', '过滤测试完成', {
+        note: '以"Test ignored"开头的错误应该被过滤'
+      });
+    }
+
+    // 页面加载完成后初始化
+    window.addEventListener('DOMContentLoaded', () => {
+      initSDK();
+    });
+
+    // 监听网络状态变化
+    window.addEventListener('online', () => {
+      log('info', '🌐 网络已连接 - 离线缓存将开始上报');
+    });
+
+    window.addEventListener('offline', () => {
+      log('warn', '📡 网络已断开 - 错误将被缓存');
+    });
+  </script>
+</body>
+</html>

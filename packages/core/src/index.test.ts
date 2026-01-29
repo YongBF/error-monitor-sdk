@@ -44,7 +44,7 @@ describe('ErrorMonitor Core', () => {
       const consoleSpy = vi.spyOn(console, 'warn')
       monitor.init()
       monitor.init()
-      expect(consoleSpy).toHaveBeenCalledWith('[ErrorMonitor] Already initialized')
+      expect(consoleSpy).toHaveBeenCalledWith('[ErrorMonitor:WARN]', 'Already initialized')
     })
   })
 
@@ -166,7 +166,7 @@ describe('ErrorMonitor Core', () => {
       })
 
       expect(monitor['breadcrumbs'].length).toBe(1)
-      expect(monitor['breadcrumbs'][0].message).toBe('User clicked button')
+      expect(monitor['breadcrumbs'].get(0)?.message).toBe('User clicked button')
     })
 
     it('面包屑数量超过最大值时应该移除旧的', () => {

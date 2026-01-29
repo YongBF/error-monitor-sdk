@@ -1,0 +1,22 @@
+# Dependencies
+node_modules
+
+# Build outputs
+dist
+build
+*.min.js
+
+# Test coverage
+coverage
+
+# Type definitions
+*.d.ts
+
+# Config files
+*.config.js
+*.config.ts
+.vite
+.turbo
+
+# Generated files
+*.generated.*

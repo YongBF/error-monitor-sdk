@@ -1,0 +1,31 @@
+# Dependencies
+node_modules
+dist
+build
+
+# Generated files
+*.min.js
+*.min.css
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# Logs
+*.log
+logs
+
+# Test coverage
+coverage
+.nyc_output
+
+# Build outputs
+*.d.ts
+*.d.ts.map
+*.js.map
+
+# Config files that shouldn't be formatted
+.vite
+.turbo
+
+# Documentation
+CHANGELOG.md

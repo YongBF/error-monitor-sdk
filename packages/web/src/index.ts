@@ -3,12 +3,17 @@
  * Web端错误监控模块
  */
 
-import { ErrorMonitor, Config } from 'error-monitor-core'
+import { ErrorMonitor, Config, Logger } from 'error-monitor-core'
 import {
   BlankScreenDetector,
   BlankScreenConfig,
   createBlankScreenDetector
 } from './blank-screen-detector'
+import {
+  PerformanceMonitor,
+  createPerformanceMonitor,
+  PerformanceMetrics
+} from './performance-monitor'
 
 // 导出核心
 export { ErrorMonitor } from 'error-monitor-core'
@@ -17,6 +22,10 @@ export type { Config, Plugin, Breadcrumb } from 'error-monitor-core'
 // 导出白屏检测
 export { BlankScreenDetector, createBlankScreenDetector }
 export type { BlankScreenConfig, BlankScreenReport } from './blank-screen-detector'
+
+// 导出性能监控
+export { PerformanceMonitor, createPerformanceMonitor }
+export type { PerformanceMetrics } from './performance-monitor'
 
 /**
  * Web端配置
@@ -44,20 +53,37 @@ export class ErrorMonitorWeb extends ErrorMonitor {
   private originalFetch: typeof fetch | null = null
   private originalXHR: typeof XMLHttpRequest | null = null
   private blankScreenDetector: BlankScreenDetector | null = null
+  private performanceMonitor: PerformanceMonitor
+  private logger: Logger
+  // 内存泄漏防护：追踪事件监听器和定时器
+  private eventListeners: Array<{
+    target: EventTarget
+    type: string
+    listener: EventListenerOrEventListenerObject
+    options?: AddEventListenerOptions | boolean
+  }> = []
+  private timers: Set<number> = new Set()
 
   constructor(config: WebConfig) {
     super(config)
     this.config = config
+    // @ts-ignore - LogLevel enum
+    this.logger = new Logger(config.enabled !== false, config.debug ? 0 : 1) // 0=DEBUG, 1=INFO
+    // 初始化性能监控器
+    this.performanceMonitor = createPerformanceMonitor()
   }
 
   /**
    * 初始化Web端监控
    */
   init(): void {
+    // 开始记录初始化时间
+    this.performanceMonitor.startInit()
+
     super.init()
 
     if (typeof window === 'undefined') {
-      console.warn('[ErrorMonitorWeb] Not in browser environment')
+      this.logger.warn('Not in browser environment')
       return
     }
 
@@ -91,14 +117,54 @@ export class ErrorMonitorWeb extends ErrorMonitor {
       this.setupBlankScreenDetection()
     }
 
-    console.log('[ErrorMonitorWeb] Web handlers initialized')
+    // 结束记录初始化时间
+    this.performanceMonitor.endInit()
+
+    this.logger.info('Web handlers initialized')
+  }
+
+  /**
+   * 内存泄漏防护：追踪事件监听器
+   */
+  private trackedAddEventListener(
+    target: EventTarget,
+    type: string,
+    listener: EventListenerOrEventListenerObject,
+    options?: AddEventListenerOptions | boolean
+  ): void {
+    // 只在有options时传递，避免传递undefined
+    if (options !== undefined) {
+      target.addEventListener(type, listener, options)
+    } else {
+      target.addEventListener(type, listener)
+    }
+    this.eventListeners.push({ target, type, listener, options })
+  }
+
+  /**
+   * 内存泄漏防护：追踪定时器
+   */
+  private trackedSetTimeout(callback: () => void, delay: number): number {
+    const id = window.setTimeout(callback, delay)
+    this.timers.add(id)
+    return id
+  }
+
+  /**
+   * 内存泄漏防护：清除定时器并移除追踪
+   */
+  private trackedClearTimeout(id: number | null): void {
+    if (id !== null) {
+      window.clearTimeout(id)
+      this.timers.delete(id)
+    }
   }
 
   /**
    * JavaScript错误处理
    */
   private setupJsErrorHandler(): void {
-    window.addEventListener('error', (event) => {
+    this.trackedAddEventListener(window, 'error', (event) => {
       this.capture({
         type: 'js',
         message: event.message,
@@ -116,7 +182,7 @@ export class ErrorMonitorWeb extends ErrorMonitor {
    * Promise错误处理
    */
   private setupPromiseErrorHandler(): void {
-    window.addEventListener('unhandledrejection', (event) => {
+    this.trackedAddEventListener(window, 'unhandledrejection', (event) => {
       this.capture({
         type: 'promise',
         message: event.reason?.message || String(event.reason),
@@ -203,7 +269,7 @@ export class ErrorMonitorWeb extends ErrorMonitor {
    * 资源加载错误处理
    */
   private setupResourceErrorHandler(): void {
-    window.addEventListener('error', (event) => {
+    this.trackedAddEventListener(window, 'error', (event) => {
       if (event.target !== window) {
         const target = event.target as HTMLElement
         this.capture({
@@ -222,17 +288,17 @@ export class ErrorMonitorWeb extends ErrorMonitor {
    * 白屏检测
    */
   private setupBlankScreenDetection(): void {
-    console.log('[ErrorMonitorWeb] Setting up blank screen detection...')
+    this.logger.debug('Setting up blank screen detection...')
     const config =
       typeof this.config.blankScreenDetection === 'boolean'
         ? {}
         : this.config.blankScreenDetection
 
-    console.log('[ErrorMonitorWeb] Blank screen config:', config)
+    this.logger.debug('Blank screen config:', config)
     this.blankScreenDetector = createBlankScreenDetector(config)
 
     this.blankScreenDetector.start((report) => {
-      console.log('[ErrorMonitorWeb] Blank screen detected!', report)
+      this.logger.warn('Blank screen detected!', report)
       this.capture({
         type: report.type,
         message: report.message,
@@ -240,7 +306,7 @@ export class ErrorMonitorWeb extends ErrorMonitor {
       })
     })
 
-    console.log('[ErrorMonitorWeb] Blank screen detection started')
+    this.logger.debug('Blank screen detection started')
   }
 
   /**
@@ -267,17 +333,87 @@ export class ErrorMonitorWeb extends ErrorMonitor {
   }
 
   /**
-   * 销毁实例
+   * 重写capture方法以记录错误处理时间
+   */
+  capture(error: any, options?: any): void {
+    const startTime = performance.now()
+
+    super.capture(error, options)
+
+    // 记录错误处理时间
+    this.performanceMonitor.recordErrorProcessing(startTime, {
+      errorType: error.type,
+      message: error.message
+    })
+  }
+
+  /**
+   * 重写report方法以记录上报时间
+   */
+  report(data: any): void {
+    const startTime = performance.now()
+
+    // 直接调用父类的report()方法
+    // 不要重复调用sendToServer，因为父类的report()会处理批量队列
+    super.report(data)
+
+    // 记录上报时间（注意：由于sendBeacon的特性，成功仅表示调用成功，不代表服务器接收成功）
+    this.performanceMonitor.recordUpload(startTime, true, {
+      eventType: data.type,
+      eventId: data.eventId
+    })
+  }
+
+  /**
+   * 获取性能指标
+   */
+  getPerformanceMetrics(): PerformanceMetrics {
+    return this.performanceMonitor.getMetrics()
+  }
+
+  /**
+   * 获取性能摘要
+   */
+  getPerformanceSummary(): string {
+    return this.performanceMonitor.getSummary()
+  }
+
+  /**
+   * 检查性能健康状况
+   */
+  checkPerformanceHealth(): { healthy: boolean; issues: string[] } {
+    return this.performanceMonitor.isHealthy()
+  }
+
+  /**
+   * 销毁实例（包含内存泄漏防护）
    */
   destroy(): void {
-    console.log('[ErrorMonitorWeb] Destroying instance...')
+    this.logger.debug('Destroying instance...')
 
     // 停止白屏检测
     if (this.blankScreenDetector) {
-      console.log('[ErrorMonitorWeb] Stopping blank screen detector...')
+      this.logger.debug('Stopping blank screen detector...')
       this.blankScreenDetector.stop()
       this.blankScreenDetector = null
     }
+
+    // 清空性能监控数据
+    this.performanceMonitor.clear()
+
+    // 内存泄漏防护：清除所有追踪的定时器
+    this.timers.forEach(id => {
+      window.clearTimeout(id)
+    })
+    this.timers.clear()
+    this.logger.debug('Cleared all tracked timers')
+
+    // 内存泄漏防护：移除所有追踪的事件监听器
+    this.eventListeners.forEach(({ target, type, listener, options }) => {
+      target.removeEventListener(type, listener, options)
+    })
+    this.eventListeners = []
+    this.logger.debug('Removed all tracked event listeners')
 
     // 恢复原生方法
     if (this.originalFetch && window.fetch !== this.originalFetch) {
@@ -290,7 +426,7 @@ export class ErrorMonitorWeb extends ErrorMonitor {
 
     super.destroy()
 
-    console.log('[ErrorMonitorWeb] Instance destroyed')
+    this.logger.info('Instance destroyed')
   }
 }
 

@@ -322,20 +322,55 @@
     function initSDK() {
       monitor = new ErrorMonitorWeb({
         appId: 'test-app',
-        dsn: 'https://your-server.com/collect',
+        dsn: 'http://localhost:3001/api/collect',
         environment: 'testing',
         release: '1.0.0-test',
         sampleRate: 1.0,
-        errorSampleRate: 1.0
+        errorSampleRate: 1.0,
+        debug: true,
+        enabled: true,
+
+        // 批量上报配置
+        report: {
+          delay: 2000,        // 2秒后批量上报
+          batchSize: 5,       // 收集5个错误后上报
+          // 自定义上报函数 - 将错误发送到本地服务器
+          customReporter: (data) => {
+            // 检查是批量还是单个
+            const isBatch = data.reports && Array.isArray(data.reports)
+            const reportData = isBatch ? data.reports : [data]
+
+            reportData.forEach(report => {
+              log(`📤 错误已上报: ${report.type} - ${report.message.substring(0, 30)}`, 'success')
+            })
+
+            // 发送到服务器
+            fetch('http://localhost:3001/api/collect', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(data)
+            }).catch(err => {
+              log(`❌ 上报失败: ${err.message}`, 'error')
+            })
+          }
+        },
+
+        // 自动捕获配置
+        autoCapture: {
+          js: true,
+          promise: true,
+          network: true,
+          resource: true
+        }
       })
 
-      // 添加插件需要导入，这里暂时跳过
       monitor.init()
 
       updateStatus()
       log('SDK初始化成功', 'success')
       log(`应用ID: test-app`, 'info')
       log(`环境: testing`, 'info')
+      log(`批量配置: 5个错误或2秒后上报`, 'info')
     }
 
     // 更新状态显示
