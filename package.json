@@ -9,7 +9,11 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev --parallel",
-    "test": "turbo run test",
+    "test": "vitest run",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "vitest run test/e2e.test.ts",
+    "test:all": "vitest run && pnpm run test:e2e",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
     "changeset": "changeset",
@@ -21,13 +25,15 @@
     "@changesets/cli": "^2.27.1",
     "@typescript-eslint/eslint-plugin": "^7.1.0",
     "@typescript-eslint/parser": "^7.1.0",
+    "@vitest/coverage-v8": "1.6.1",
     "eslint": "^8.57.0",
+    "happy-dom": "^20.4.0",
     "prettier": "^3.2.5",
     "turbo": "^1.12.4",
     "typescript": "^5.3.3",
     "vite": "^5.1.6",
     "vite-plugin-dts": "^3.7.3",
-    "vitest": "^1.4.0"
+    "vitest": "^1.6.1"
   },
   "packageManager": "pnpm@7.1.9",
   "engines": {

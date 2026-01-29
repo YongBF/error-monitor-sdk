@@ -325,8 +325,10 @@ export class ErrorMonitor implements Core {
     }
 
     // 采样率检查
-    if (!opts.skipSampling && this.config.errorSampleRate && Math.random() > this.config.errorSampleRate) {
-      return
+    if (!opts.skipSampling && this.config.errorSampleRate !== undefined) {
+      if (Math.random() > this.config.errorSampleRate) {
+        return
+      }
     }
 
     // beforeCapture钩子

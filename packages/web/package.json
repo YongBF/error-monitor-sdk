@@ -1,16 +1,42 @@
 {
   "name": "error-monitor-web",
   "version": "1.0.0",
-  "description": "Web error monitoring SDK",
+  "description": "Web error monitoring SDK - Browser-specific error tracking with automatic capture and blank screen detection",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
-  "files": ["dist"],
-  "keywords": ["error", "monitor", "sdk", "web"],
-  "author": "",
+  "files": ["dist", "README.md", "LICENSE"],
+  "keywords": [
+    "error",
+    "monitor",
+    "monitoring",
+    "sdk",
+    "web",
+    "browser",
+    "error-tracking",
+    "error-reporting",
+    "javascript",
+    "frontend",
+    "blank-screen",
+    "white-screen",
+    "performance"
+  ],
+  "author": "Error Monitor SDK",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/error-monitor-sdk.git",
+    "directory": "packages/web"
+  },
+  "homepage": "https://github.com/your-org/error-monitor-sdk#readme",
+  "bugs": {
+    "url": "https://github.com/your-org/error-monitor-sdk/issues"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "dependencies": {
-    "error-monitor-core": "workspace:*"
+    "error-monitor-core": "^1.0.0"
   },
   "scripts": {
     "build": "vite build",

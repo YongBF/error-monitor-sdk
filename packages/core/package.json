@@ -1,14 +1,39 @@
 {
   "name": "error-monitor-core",
   "version": "1.0.0",
-  "description": "Core module for error monitoring SDK",
+  "description": "Core module for error monitoring SDK - A powerful, flexible error tracking solution for JavaScript applications",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
-  "files": ["dist"],
-  "keywords": ["error", "monitor", "sdk", "core"],
-  "author": "",
+  "files": ["dist", "README.md", "LICENSE"],
+  "keywords": [
+    "error",
+    "monitor",
+    "monitoring",
+    "sdk",
+    "core",
+    "error-tracking",
+    "error-reporting",
+    "javascript",
+    "typescript",
+    "debugging",
+    "breadcrumbs",
+    "plugin"
+  ],
+  "author": "Error Monitor SDK",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/error-monitor-sdk.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://github.com/your-org/error-monitor-sdk#readme",
+  "bugs": {
+    "url": "https://github.com/your-org/error-monitor-sdk/issues"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "build": "vite build",
     "dev": "vite build --watch",
