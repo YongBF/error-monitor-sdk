@@ -476,8 +476,40 @@
       const perfData = performance.getEntriesByType('navigation')[0]
       if (perfData) {
         log('📊 性能指标:', 'info')
-        log(`  - DOM加载: ${Math.round(perfData.domContentLoadedEventEnd - perfData.navigationStart)}ms`, 'info')
-        log(`  - 完全加载: ${Math.round(perfData.loadEventEnd - perfData.navigationStart)}ms`, 'info')
+
+        const now = performance.now()
+        const navigationStart = perfData.navigationStart || 0
+
+        // DOM加载时间
+        let domLoadTime = perfData.domContentLoadedEventEnd - navigationStart
+        if (domLoadTime <= 0 && perfData.domContentLoadedEventEnd === 0) {
+          // 页面还未完成DOM加载，使用当前时间估算
+          domLoadTime = now - navigationStart
+          log(`  - DOM加载: ${Math.round(domLoadTime)}ms (估算)`, 'info')
+        } else if (domLoadTime > 0) {
+          log(`  - DOM加载: ${Math.round(domLoadTime)}ms`, 'info')
+        } else {
+          log(`  - DOM加载: 加载中...`, 'info')
+        }
+
+        // 完全加载时间
+        let loadTime = perfData.loadEventEnd - navigationStart
+        if (loadTime <= 0 && perfData.loadEventEnd === 0) {
+          // 页面还未完全加载，使用当前时间估算
+          loadTime = now - navigationStart
+          log(`  - 完全加载: ${Math.round(loadTime)}ms (估算)`, 'info')
+        } else if (loadTime > 0) {
+          log(`  - 完全加载: ${Math.round(loadTime)}ms`, 'info')
+        } else {
+          log(`  - 完全加载: 加载中...`, 'info')
+        }
+
+        // 添加提示
+        if (perfData.loadEventEnd === 0) {
+          log(`  💡 提示: 页面仍在加载中，以上为估算值`, 'info')
+        }
+      } else {
+        log('📊 性能指标: 暂无数据', 'info')
       }
     }
 

@@ -267,11 +267,26 @@ export class ErrorMonitorWeb extends ErrorMonitor {
 
   /**
    * 资源加载错误处理
+   *
+   * 注意：资源加载错误（img, script, link等）不会冒泡到window
+   * 需要通过拦截元素创建来监听
    */
   private setupResourceErrorHandler(): void {
-    this.trackedAddEventListener(window, 'error', (event) => {
-      if (event.target !== window) {
-        const target = event.target as HTMLElement
+    // 方法1: 监听window的error事件（只捕获JavaScript错误）
+    this.trackedAddEventListener(window, 'error', (event: Event) => {
+      // 这是JS错误，不是资源错误，跳过
+      if ((event as ErrorEvent).message) {
+        return
+      }
+
+      // 尝试捕获资源错误（某些浏览器可能支持）
+      const target = event.target as HTMLElement
+      if (target !== window && target) {
+        console.log('[ResourceErrorHandler] Resource error via window event', {
+          tagName: target.tagName,
+          src: (target as any).src || (target as any).href
+        })
+
         this.capture({
           type: 'resource',
           message: `Resource load error: ${target.tagName}`,
@@ -282,6 +297,54 @@ export class ErrorMonitorWeb extends ErrorMonitor {
         })
       }
     }, true)
+
+    // 方法2: 拦截常见的资源元素创建，自动添加error监听器
+    this.interceptResourceElements()
+  }
+
+  /**
+   * 拦截资源元素的创建，自动添加error监听器
+   */
+  private interceptResourceElements(): void {
+    const self = this
+
+    // 拦截Image构造函数
+    const OriginalImage = window.Image
+    const TrackedImage = function(this: HTMLImageElement, ...args: any[]) {
+      const img = new OriginalImage(...args)
+
+      // 添加error监听器
+      self.trackedAddEventListener(img, 'error', (event: Event) => {
+        const target = event.target as HTMLImageElement
+        console.log('[ResourceErrorHandler] Image error captured', {
+          src: target.src,
+          currentSrc: target.currentSrc
+        })
+
+        self.capture({
+          type: 'resource',
+          message: `Image load failed: ${target.src.substring(0, 100)}`,
+          context: {
+            tagName: 'IMG',
+            src: target.src,
+            currentSrc: target.currentSrc
+          }
+        })
+      })
+
+      return img
+    }
+
+    // 复制原型和静态属性
+    TrackedImage.prototype = OriginalImage.prototype
+    TrackedImage.prototype.constructor = TrackedImage
+    ;(TrackedImage as any).toString = () => OriginalImage.toString()
+
+    // 替换全局Image
+    ;(window as any).Image = TrackedImage
+
+    // 注意：script和link标签通常在HTML中静态声明，
+    // 需要使用MutationObserver监听DOM变化（暂不实现）
   }
 
   /**
