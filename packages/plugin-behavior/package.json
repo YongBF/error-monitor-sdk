@@ -1,12 +1,20 @@
 {
   "name": "@error-monitor/plugin-behavior",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "User behavior tracking plugin for error-monitor-sdk",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
-  "files": ["dist"],
-  "keywords": ["error", "monitor", "plugin", "behavior", "tracking"],
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "error",
+    "monitor",
+    "plugin",
+    "behavior",
+    "tracking"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {

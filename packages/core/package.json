@@ -1,11 +1,15 @@
 {
   "name": "error-monitor-core",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Core module for error monitoring SDK - A powerful, flexible error tracking solution for JavaScript applications",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
-  "files": ["dist", "README.md", "LICENSE"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "keywords": [
     "error",
     "monitor",

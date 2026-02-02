@@ -1,12 +1,20 @@
 {
   "name": "@error-monitor/plugin-perf",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Performance monitoring plugin for error-monitor-sdk",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
-  "files": ["dist"],
-  "keywords": ["error", "monitor", "plugin", "performance", "web-vitals"],
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "error",
+    "monitor",
+    "plugin",
+    "performance",
+    "web-vitals"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {

@@ -20,5 +20,5 @@ export default defineConfig({
     sourcemap: true,
     minify: 'esbuild'
   },
-  plugins: [dts({ rollupTypes: true })]
+  plugins: [dts({ compilerOptions: { removeComments: true } })]
 })
