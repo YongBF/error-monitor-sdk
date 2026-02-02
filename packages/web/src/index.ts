@@ -308,8 +308,20 @@ export class ErrorMonitorWeb extends ErrorMonitor {
   private interceptResourceElements(): void {
     const self = this
 
-    // 拦截Image构造函数
+    // 拦截Image构造函数（仅在浏览器环境且Image存在时）
+    if (typeof window === 'undefined' || typeof window.Image === 'undefined') {
+      this.logger.debug('Image constructor not available, skipping resource interception')
+      return
+    }
+
     const OriginalImage = window.Image
+
+    // 检查原型是否存在（防止test环境中的undefined问题）
+    if (!OriginalImage || !OriginalImage.prototype) {
+      this.logger.warn('Image.prototype not available, skipping resource interception')
+      return
+    }
+
     const TrackedImage = function(this: HTMLImageElement, ...args: any[]) {
       const img = new OriginalImage(...args)
 

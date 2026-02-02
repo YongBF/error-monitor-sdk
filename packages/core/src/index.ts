@@ -559,7 +559,7 @@ export class ErrorMonitor implements Core {
     }
 
     // 使用批量队列上报（如果启用）或直接上报
-    if (this.batchQueue) {
+    if (this.batchQueue && this.config.report?.batchSize !== 1) {
       this.batchQueue.add(processedReport)
     } else {
       this.sendToServer(processedReport)

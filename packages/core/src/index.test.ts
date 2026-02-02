@@ -19,7 +19,11 @@ describe('ErrorMonitor Core', () => {
       appId: 'test-app',
       dsn: 'http://localhost:3000/collect',
       enabled: true,
-      debug: false
+      debug: false,
+      report: {
+        batchSize: 1, // 禁用批量队列延迟，立即上报
+        delay: 100
+      }
     })
   })
 

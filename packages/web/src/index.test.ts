@@ -24,6 +24,14 @@ const mockWindow = {
   },
   navigator: {
     userAgent: 'Test Agent'
+  },
+  setTimeout: global.setTimeout, // 添加setTimeout mock
+  clearTimeout: global.clearTimeout, // 添加clearTimeout mock
+  Image: class Image {}, // 添加Image mock
+  innerWidth: 1024,
+  innerHeight: 768,
+  performance: {
+    now: () => Date.now()
   }
 } as any
 
