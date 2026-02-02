@@ -1,5 +1,5 @@
 {
-  "name": "@error-monitor/plugin-perf",
+  "name": "error-monitor-plugin-perf",
   "version": "1.0.1",
   "description": "Performance monitoring plugin for error-monitor-sdk",
   "main": "./dist/index.cjs",

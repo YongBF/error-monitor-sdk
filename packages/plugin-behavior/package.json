@@ -1,5 +1,5 @@
 {
-  "name": "@error-monitor/plugin-behavior",
+  "name": "error-monitor-plugin-behavior",
   "version": "1.0.1",
   "description": "User behavior tracking plugin for error-monitor-sdk",
   "main": "./dist/index.cjs",
